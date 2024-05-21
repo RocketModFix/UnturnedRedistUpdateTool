@@ -19,13 +19,13 @@ internal class Program
 
         AssertPlatformSupported();
 
-        string path;
+        string unturnedPath;
         if (args.Length < 3)
         {
             Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistAutoUpdate.exe <path> <app_id> [args]");
             return 1;
         }
-        path = args[0];
+        unturnedPath = args[0];
         AppId = args[1];
         Force = !args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
 
@@ -34,12 +34,12 @@ internal class Program
             Console.WriteLine("AppId is not specified.");
             return 1;
         }
-        if (Path.Exists(path) == false)
+        if (Path.Exists(unturnedPath) == false)
         {
-            Console.WriteLine($"Path doesn't exists: \"{path}\".");
+            Console.WriteLine($"Path doesn't exists: \"{unturnedPath}\".");
             return 1;
         }
-        var redistPath = Path.Combine(path, "redist");
+        var redistPath = Path.Combine(unturnedPath, "redist");
         if (Path.Exists(redistPath) == false)
         {
             Console.WriteLine($"Redist path doesn't exists: \"{redistPath}\".");
@@ -59,7 +59,7 @@ internal class Program
 
         Console.WriteLine("Preparing to run tool...");
 
-        var steamappsDirectory = Path.Combine(path, "steamapps");
+        var steamappsDirectory = Path.Combine(unturnedPath, "steamapps");
         if (Directory.Exists(steamappsDirectory) == false)
         {
             Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
@@ -67,27 +67,7 @@ internal class Program
         }
         Console.WriteLine("steamappsDirectory: " + string.Join(", ", Directory.GetDirectories(steamappsDirectory)));
 
-        var commonDirectory = Path.Combine(steamappsDirectory, "common");
-        if (Directory.Exists(commonDirectory) == false)
-        {
-            Console.WriteLine($"common Directory not found: \"{commonDirectory}\"");
-            return 1;
-        }
-        var unturnedDirectory = GetUnturnedDirectory(commonDirectory);
-        if (unturnedDirectory == null || Directory.Exists(unturnedDirectory) == false)
-        {
-            Console.WriteLine($"Unturned Directory not found: \"{unturnedDirectory}\"");
-            return 1;
-        }
-        Console.WriteLine("unturnedDirectory: " + string.Join(", ", Directory.GetDirectories(unturnedDirectory)));
-
-        var unturnedDataDirectoryName = GetUnturnedDataDirectoryName();
-        var unturnedDataPath = Path.Combine(unturnedDirectory, unturnedDataDirectoryName);
-        if (Directory.Exists(unturnedDataPath) == false)
-        {
-            Console.WriteLine($"Unturned Data Directory not found: \"{unturnedDataPath}\"");
-            return 1;
-        }
+        var unturnedDataPath = GetUnturnedDataDirectoryName(unturnedPath);
         var managedDirectory = Path.Combine(unturnedDataPath, "Managed");
         if (Directory.Exists(managedDirectory) == false)
         {
@@ -95,12 +75,12 @@ internal class Program
             return 1;
         }
         const string statusFileName = "Status.json";
-        var statusFilePath = Path.Combine(unturnedDirectory, statusFileName);
+        var statusFilePath = Path.Combine(unturnedPath, statusFileName);
         if (File.Exists(statusFilePath) == false)
         {
             throw new FileNotFoundException("Required file is not found", statusFilePath);
         }
-        var (version, buildId) = await GetInfo(unturnedDirectory, steamappsDirectory, AppId);
+        var (version, buildId) = await GetInfo(unturnedPath, steamappsDirectory, AppId);
 
         Console.WriteLine($"Found Unturned v{version} ({buildId})");
 
@@ -128,7 +108,7 @@ internal class Program
 
         var forcedNote = Force ? " [Forced]" : "";
 
-        await File.WriteAllTextAsync(Path.Combine(path, ".commit"),
+        await File.WriteAllTextAsync(Path.Combine(unturnedPath, ".commit"),
             $"{DateTime.UtcNow:dd MMMM yyyy} - Version {version} ({buildId})" + forcedNote);
 
         return 0;
@@ -136,21 +116,6 @@ internal class Program
         void AssertPlatformSupported()
         {
             if (!(linux || windows))
-            {
-                throw new PlatformNotSupportedException();
-            }
-        }
-        string GetUnturnedDataDirectoryName()
-        {
-            if (linux)
-            {
-                return "Unturned_Headless_Data";
-            }
-            else if (windows)
-            {
-                return "Unturned_Data";
-            }
-            else
             {
                 throw new PlatformNotSupportedException();
             }
@@ -165,7 +130,7 @@ internal class Program
 
             foreach (var fileInfo in managedFiles)
             {
-                var redistFilePath = Path.Combine(path, fileInfo.Name);
+                var redistFilePath = Path.Combine(unturnedPath, fileInfo.Name);
                 if (File.Exists(redistFilePath))
                 {
                     fileInfo.CopyTo(redistFilePath, true);
@@ -174,21 +139,20 @@ internal class Program
         }
     }
 
-    private static string? GetUnturnedDirectory(string commonDirectory)
+    private static string GetUnturnedDataDirectoryName(string unturnedPath)
     {
-        var unturnedDirectory = Path.Combine(commonDirectory, "Unturned");
-        if (Directory.Exists(unturnedDirectory))
+        var headless = Path.Combine(unturnedPath, "Unturned_Headless_Data");
+        if (Directory.Exists(headless))
         {
-            return unturnedDirectory;
+            return headless;
         }
-        unturnedDirectory = Path.Combine(commonDirectory, "U3DS");
-        if (Directory.Exists(unturnedDirectory))
+        var usual = Path.Combine(unturnedPath, "Unturned_Data");
+        if (Directory.Exists(usual))
         {
-            return unturnedDirectory;
+            return usual;
         }
-        return null;
+        throw new DirectoryNotFoundException("Unturned Data directory cannot be found!");
     }
-
     private static async Task<(string version, string buildId)> GetInfo(string unturnedPath, string steamappsPath, string appId)
     {
         var node = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(unturnedPath, "Status.json")))!["Game"]!;
