@@ -20,13 +20,15 @@ internal class Program
         AssertPlatformSupported();
 
         string unturnedPath;
+        string redistPath;
         if (args.Length < 3)
         {
-            Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistAutoUpdate.exe <path> <app_id> [args]");
+            Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistUpdateTool.exe <path> <redist_path> <app_id> [args]");
             return 1;
         }
         unturnedPath = args[0];
-        AppId = args[1];
+        redistPath = args[1];
+        AppId = args[2];
         Force = !args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
 
         if (string.IsNullOrWhiteSpace(AppId))
@@ -39,7 +41,6 @@ internal class Program
             Console.WriteLine($"Path doesn't exists: \"{unturnedPath}\".");
             return 1;
         }
-        var redistPath = Path.Combine(unturnedPath, "redist");
         if (Directory.Exists(redistPath) == false)
         {
             Console.WriteLine($"Redist path doesn't exists: \"{redistPath}\".");
