@@ -88,6 +88,7 @@ internal class Program
         var versionElement = doc.Root.Element(ns + "metadata").Element(ns + "version");
         if (versionElement != null)
         {
+            Console.WriteLine($"nuspec version: {versionElement.Value}");
             if (version == versionElement.Value)
             {
                 Console.WriteLine("Unturned Version is the same as in nuspec, it means new version is not detected, skipping...");
