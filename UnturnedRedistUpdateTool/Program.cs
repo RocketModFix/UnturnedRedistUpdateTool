@@ -34,13 +34,13 @@ internal class Program
             Console.WriteLine("AppId is not specified.");
             return 1;
         }
-        if (Path.Exists(unturnedPath) == false)
+        if (Directory.Exists(unturnedPath) == false)
         {
             Console.WriteLine($"Path doesn't exists: \"{unturnedPath}\".");
             return 1;
         }
         var redistPath = Path.Combine(unturnedPath, "redist");
-        if (Path.Exists(redistPath) == false)
+        if (Directory.Exists(redistPath) == false)
         {
             Console.WriteLine($"Redist path doesn't exists: \"{redistPath}\".");
             return 1;
@@ -65,7 +65,6 @@ internal class Program
             Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
             return 1;
         }
-        Console.WriteLine("steamappsDirectory: " + string.Join(", ", Directory.GetDirectories(steamappsDirectory)));
 
         var unturnedDataPath = GetUnturnedDataDirectoryName(unturnedPath);
         var managedDirectory = Path.Combine(unturnedDataPath, "Managed");
@@ -159,13 +158,13 @@ internal class Program
         var version = $"3.{node["Major_Version"]}.{node["Minor_Version"]}.{node["Patch_Version"]}";
 
         var appmanifestFileName = $"appmanifest_{appId}.acf";
-        var appdataPath = Path.Combine(steamappsPath, "steamapps", appmanifestFileName);
-        if (!File.Exists(appdataPath))
+        var appmanifestFilePath = Path.Combine(steamappsPath, appmanifestFileName);
+        if (File.Exists(appmanifestFilePath) == false)
         {
-            throw new FileNotFoundException("Required file is not found", appmanifestFileName);
+            throw new FileNotFoundException("Required file is not found", appmanifestFilePath);
         }
 
-        await using var file = File.OpenRead(appdataPath);
+        await using var file = File.OpenRead(appmanifestFilePath);
         var kv = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
         var obj = kv.Deserialize(file);
 
