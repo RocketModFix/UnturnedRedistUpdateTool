@@ -59,6 +59,8 @@ internal class Program
 
         Console.WriteLine("Preparing to run tool...");
 
+        Console.WriteLine("Directories: " + string.Join(", ", Directory.GetDirectories(path)));
+
         var executableDirectory = Path.Combine(path, "steamcmd");
         if (Directory.Exists(executableDirectory) == false)
         {
