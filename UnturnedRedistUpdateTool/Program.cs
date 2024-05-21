@@ -67,6 +67,8 @@ internal class Program
             Console.WriteLine($"executable Directory not found: \"{executableDirectory}\"");
             return 1;
         }
+        Console.WriteLine("steamcmd Directories: " + string.Join(", ", Directory.GetDirectories(executableDirectory)));
+
         var steamappsDirectory = Path.Combine(executableDirectory, "steamapps");
         if (Directory.Exists(steamappsDirectory) == false)
         {
