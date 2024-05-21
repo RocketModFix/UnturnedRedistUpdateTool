@@ -59,22 +59,14 @@ internal class Program
 
         Console.WriteLine("Preparing to run tool...");
 
-        Console.WriteLine("Directories: " + string.Join(", ", Directory.GetDirectories(path)));
-
-        var executableDirectory = Path.Combine(path, "steamcmd");
-        if (Directory.Exists(executableDirectory) == false)
-        {
-            Console.WriteLine($"executable Directory not found: \"{executableDirectory}\"");
-            return 1;
-        }
-        Console.WriteLine("steamcmd Directories: " + string.Join(", ", Directory.GetDirectories(executableDirectory)));
-
-        var steamappsDirectory = Path.Combine(executableDirectory, "steamapps");
+        var steamappsDirectory = Path.Combine(path, "steamapps");
         if (Directory.Exists(steamappsDirectory) == false)
         {
             Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
             return 1;
         }
+        Console.WriteLine("steamappsDirectory: " + string.Join(", ", Directory.GetDirectories(steamappsDirectory)));
+
         var commonDirectory = Path.Combine(steamappsDirectory, "common");
         if (Directory.Exists(commonDirectory) == false)
         {
@@ -108,7 +100,7 @@ internal class Program
         {
             throw new FileNotFoundException("Required file is not found", statusFilePath);
         }
-        var (version, buildId) = await GetInfo(unturnedDirectory, executableDirectory, AppId);
+        var (version, buildId) = await GetInfo(unturnedDirectory, steamappsDirectory, AppId);
 
         Console.WriteLine($"Found Unturned v{version} ({buildId})");
 
@@ -197,13 +189,13 @@ internal class Program
         return null;
     }
 
-    private static async Task<(string version, string buildId)> GetInfo(string unturnedDirectory, string executablePath, string appId)
+    private static async Task<(string version, string buildId)> GetInfo(string unturnedPath, string steamappsPath, string appId)
     {
-        var node = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(unturnedDirectory, "Status.json")))!["Game"]!;
+        var node = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(unturnedPath, "Status.json")))!["Game"]!;
         var version = $"3.{node["Major_Version"]}.{node["Minor_Version"]}.{node["Patch_Version"]}";
 
         var appmanifestFileName = $"appmanifest_{appId}.acf";
-        var appdataPath = Path.Combine(executablePath, "steamapps", appmanifestFileName);
+        var appdataPath = Path.Combine(steamappsPath, "steamapps", appmanifestFileName);
         if (!File.Exists(appdataPath))
         {
             throw new FileNotFoundException("Required file is not found", appmanifestFileName);
