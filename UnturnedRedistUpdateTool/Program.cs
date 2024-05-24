@@ -67,7 +67,6 @@ internal class Program
             Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
             return 1;
         }
-
         var unturnedDataPath = GetUnturnedDataDirectoryName(unturnedPath);
         var managedDirectory = Path.Combine(unturnedDataPath, "Managed");
         if (Directory.Exists(managedDirectory) == false)
