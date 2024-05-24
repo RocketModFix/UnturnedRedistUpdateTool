@@ -23,13 +23,13 @@ internal class Program
         string redistPath;
         if (args.Length < 3)
         {
-            Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistUpdateTool.exe <path> <redist_path> <app_id> [args]");
+            Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistUpdateTool.exe <unturned_path> <redist_path> <app_id> [args]");
             return 1;
         }
         unturnedPath = args[0];
         redistPath = args[1];
         AppId = args[2];
-        Force = !args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
+        Force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
 
         if (string.IsNullOrWhiteSpace(AppId))
         {
@@ -131,11 +131,13 @@ internal class Program
 
             foreach (var fileInfo in managedFiles)
             {
-                var redistFilePath = Path.Combine(unturnedPath, fileInfo.Name);
-                if (File.Exists(redistFilePath))
+                var redistFilePath = Path.Combine(redistPath, fileInfo.Name);
+                if (File.Exists(redistFilePath) == false)
                 {
-                    fileInfo.CopyTo(redistFilePath, true);
+                    continue;
                 }
+
+                fileInfo.CopyTo(redistFilePath, true);
             }
         }
     }
@@ -152,7 +154,7 @@ internal class Program
         {
             return usual;
         }
-        throw new DirectoryNotFoundException("Unturned Data directory cannot be found!");
+        throw new DirectoryNotFoundException($"Unturned Data directory cannot be found in {unturnedPath}");
     }
     private static async Task<(string version, string buildId)> GetInfo(string unturnedPath, string steamappsPath, string appId)
     {
