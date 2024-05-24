@@ -116,7 +116,7 @@ internal class Program
         Console.WriteLine($"Updated {updatedFiles.Count} File(s)");
         foreach (var (fromPath, toPath) in updatedFiles)
         {
-            Console.WriteLine("Updated");
+            Console.WriteLine($"Updated File. From: \"{fromPath}\", To: \"{toPath}\"");
         }
 
         var forcedNote = Force ? " [Forced]" : "";
