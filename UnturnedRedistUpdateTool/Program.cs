@@ -161,7 +161,7 @@ internal class Program
                     fileInfo.CopyTo(redistFilePath, true);
                     updatedFiles.Add(managedFilePath, redistFilePath);
                 }
-                catch
+                catch (Exception)
                 {
                     Console.WriteLine($"An error occured while updating file: \"{fileInfo.FullName}\".");
                     throw;
