@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
@@ -105,7 +106,18 @@ internal class Program
 
         doc.Save(nuspecFilePath);
 
-        UpdateRedist(managedDirectory);
+        var updatedFiles = UpdateRedist(managedDirectory);
+        if (updatedFiles.Count == 0)
+        {
+            Console.WriteLine($"No one file were updated, perhaps something went wrong.");
+            return 1;
+        }
+
+        Console.WriteLine($"Updated {updatedFiles.Count} File(s)");
+        foreach (var (fromPath, toPath) in updatedFiles)
+        {
+            Console.WriteLine("Updated");
+        }
 
         var forcedNote = Force ? " [Forced]" : "";
 
@@ -121,24 +133,43 @@ internal class Program
                 throw new PlatformNotSupportedException();
             }
         }
-        void UpdateRedist(string unturnedManagedDirectory)
+        Dictionary<string, string> UpdateRedist(string unturnedManagedDirectory)
         {
             var managedFiles = new DirectoryInfo(unturnedManagedDirectory).GetFiles();
             if (managedFiles.Length == 0)
             {
-                throw new InvalidOperationException($"{nameof(managedFiles)} was empty");
+                throw new InvalidOperationException($"{unturnedManagedDirectory} directory was empty");
             }
 
+            var updatedFiles = new Dictionary<string, string>();
             foreach (var fileInfo in managedFiles)
             {
-                var redistFilePath = Path.Combine(redistPath, fileInfo.Name);
-                if (File.Exists(redistFilePath) == false)
+                try
                 {
-                    continue;
-                }
+                    var managedFilePath = fileInfo.FullName;
+                    var redistFilePath = Path.Combine(redistPath, fileInfo.Name);
+                    if (File.Exists(redistFilePath) == false)
+                    {
+                        continue;
+                    }
+                    var managedFileData = File.ReadAllBytes(managedFilePath);
+                    var redistFileData = File.ReadAllBytes(redistFilePath);
+                    if (HashHelper.IsSameHashes(managedFileData, redistFileData))
+                    {
+                        continue;
+                    }
 
-                fileInfo.CopyTo(redistFilePath, true);
+                    fileInfo.CopyTo(redistFilePath, true);
+                    updatedFiles.Add(managedFilePath, redistFilePath);
+                }
+                catch
+                {
+                    Console.WriteLine($"An error occured while updating file: \"{fileInfo.FullName}\".");
+                    throw;
+                }
             }
+
+            return updatedFiles;
         }
     }
 
@@ -174,5 +205,24 @@ internal class Program
 
         var buildId1 = obj["buildid"].ToString();
         return (version, buildId1);
+    }
+}
+
+internal static class HashHelper
+{
+    public static string GetHashFromArray(byte[] data)
+    {
+        using var sha = SHA256.Create();
+        using var input = new MemoryStream(data);
+        var output = sha.ComputeHash(input);
+        const string minusSymbol = "-";
+        return BitConverter
+            .ToString(output)
+            .Replace(minusSymbol, string.Empty)
+            .ToLowerInvariant();
+    }
+    public static bool IsSameHashes(byte[] managedFileData, byte[] redistFileData)
+    {
+        return GetHashFromArray(managedFileData) == GetHashFromArray(redistFileData);
     }
 }
