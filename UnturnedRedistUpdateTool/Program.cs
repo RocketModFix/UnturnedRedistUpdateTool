@@ -1,11 +1,7 @@
-﻿using System.Diagnostics;
-using System.IO.Compression;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
-using ICSharpCode.SharpZipLib.Tar;
 using ValveKeyValue;
 
 internal class Program
@@ -174,12 +170,14 @@ internal class Program
 
     private static string GetUnturnedDataDirectoryName(string unturnedPath)
     {
-        var headless = Path.Combine(unturnedPath, "Unturned_Headless_Data");
+        const string linuxUnturnedDataDirectoryName = "Unturned_Headless_Data";
+        var headless = Path.Combine(unturnedPath, linuxUnturnedDataDirectoryName);
         if (Directory.Exists(headless))
         {
             return headless;
         }
-        var usual = Path.Combine(unturnedPath, "Unturned_Data");
+        const string windowsUnturnedDataDirectoryName = "Unturned_Data";
+        var usual = Path.Combine(unturnedPath, windowsUnturnedDataDirectoryName);
         if (Directory.Exists(usual))
         {
             return usual;
