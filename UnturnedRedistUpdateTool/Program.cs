@@ -74,30 +74,28 @@ internal class Program
         var statusFilePath = Path.Combine(unturnedPath, statusFileName);
         if (File.Exists(statusFilePath) == false)
         {
-            throw new FileNotFoundException("Required file is not found", statusFilePath);
+            throw new FileNotFoundException("Status file is not found", statusFilePath);
         }
         var (version, buildId) = await GetInfo(unturnedPath, steamappsDirectory, AppId);
 
         Console.WriteLine($"Found Unturned v{version} ({buildId})");
 
         var doc = XDocument.Load(nuspecFilePath, LoadOptions.PreserveWhitespace);
-        XNamespace ns = "http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd";
+        var ns = "http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd";
         var versionElement = doc.Root.Element(ns + "metadata").Element(ns + "version");
-        if (versionElement != null)
-        {
-            Console.WriteLine($"nuspec version: {versionElement.Value}");
-            if (version == versionElement.Value)
-            {
-                Console.WriteLine("Unturned Version is the same as in nuspec, it means new version is not detected, skipping...");
-                return 1;
-            }
-            versionElement.Value = version;
-        }
-        else
+        if (versionElement == null)
         {
             Console.WriteLine("Version element not found in nuspec file!");
             return 1;
         }
+
+        Console.WriteLine($"nuspec version: {versionElement.Value}");
+        if (version == versionElement.Value)
+        {
+            Console.WriteLine("Unturned Version is the same as in nuspec, it means new version is not detected, skipping...");
+            return 1;
+        }
+        versionElement.Value = version;
 
         doc.Save(nuspecFilePath);
 
@@ -157,10 +155,9 @@ internal class Program
                     fileInfo.CopyTo(redistFilePath, true);
                     updatedFiles.Add(managedFilePath, redistFilePath);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"An error occured while updating file: \"{fileInfo.FullName}\".");
-                    throw;
+                    throw new Exception($"An error occured while updating file: \"{fileInfo.FullName}\".", ex);
                 }
             }
 
