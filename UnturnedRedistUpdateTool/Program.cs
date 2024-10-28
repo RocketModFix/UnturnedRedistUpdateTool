@@ -81,7 +81,7 @@ internal class Program
         Console.WriteLine($"Found Unturned v{version} ({buildId})");
 
         var doc = XDocument.Load(nuspecFilePath, LoadOptions.PreserveWhitespace);
-        var ns = "http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd";
+        XNamespace ns = "http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd";
         var versionElement = doc.Root.Element(ns + "metadata").Element(ns + "version");
         if (versionElement == null)
         {
