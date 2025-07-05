@@ -13,6 +13,7 @@
 $projectPath = $args[0]
 $projectName = Split-Path -Path $projectPath -Leaf
 $testsFolderPath = Join-Path -Path $projectPath -ChildPath "../tests"
+$global:exitCode = 0
 
 $commandToExecute = $args[1]
 
@@ -23,4 +24,7 @@ Get-ChildItem -Path $testsFolderPath -Directory -Recurse `
     $testsProjectPath = Join-Path -Path $testsFolderPath -ChildPath $testsProjectName
     Write-Output "Tests project found: $testsProjectPath. Executing a command: $commandToExecute"
     bash -c "PROJECT_PATH=$testsProjectPath && $commandToExecute"
+    if ($LASTEXITCODE -ne 0) {
+        $global:exitCode = $LASTEXITCODE
+    }
 }

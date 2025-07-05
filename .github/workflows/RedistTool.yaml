@@ -55,13 +55,6 @@ jobs:
           path: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.zip"
           if-no-files-found: error
 
-      - name: Upload UnturnedRedistUpdateTool
-        uses: actions/upload-artifact@v4
-        with:
-          name: UnturnedRedistUpdateTool.zip
-          path: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.zip"
-          if-no-files-found: error
-
       - name: Create Release
         if: github.event_name == 'create' && github.event.ref_type == 'tag'
         uses: ncipollo/release-action@v1
