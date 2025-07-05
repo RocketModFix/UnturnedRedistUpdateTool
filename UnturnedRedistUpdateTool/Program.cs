@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using ValveKeyValue;
@@ -16,15 +17,13 @@ internal class Program
 
         AssertPlatformSupported();
 
-        string unturnedPath;
-        string redistPath;
         if (args.Length < 3)
         {
             Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistUpdateTool.exe <unturned_path> <redist_path> <app_id> [args]");
             return 1;
         }
-        unturnedPath = args[0];
-        redistPath = args[1];
+        var unturnedPath = args[0];
+        var redistPath = args[1];
         AppId = args[2];
         Force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
 
@@ -33,12 +32,12 @@ internal class Program
             Console.WriteLine("AppId is not specified.");
             return 1;
         }
-        if (Directory.Exists(unturnedPath) == false)
+        if (!Directory.Exists(unturnedPath))
         {
             Console.WriteLine($"Path doesn't exists: \"{unturnedPath}\".");
             return 1;
         }
-        if (Directory.Exists(redistPath) == false)
+        if (!Directory.Exists(redistPath))
         {
             Console.WriteLine($"Redist path doesn't exists: \"{redistPath}\".");
             return 1;
@@ -49,7 +48,7 @@ internal class Program
             Console.WriteLine($".nuspec file cannot be found in redist folder: \"{redistPath}\".");
             return 1;
         }
-        if (File.Exists(nuspecFilePath) == false)
+        if (!File.Exists(nuspecFilePath))
         {
             Console.WriteLine($".nuspec file doesn't exists in redist folder: \"{redistPath}\".");
             return 1;
@@ -58,21 +57,21 @@ internal class Program
         Console.WriteLine("Preparing to run tool...");
 
         var steamappsDirectory = Path.Combine(unturnedPath, "steamapps");
-        if (Directory.Exists(steamappsDirectory) == false)
+        if (!Directory.Exists(steamappsDirectory))
         {
             Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
             return 1;
         }
         var unturnedDataPath = GetUnturnedDataDirectoryName(unturnedPath);
         var managedDirectory = Path.Combine(unturnedDataPath, "Managed");
-        if (Directory.Exists(managedDirectory) == false)
+        if (!Directory.Exists(managedDirectory))
         {
             Console.WriteLine($"Unturned Managed Directory not found: \"{managedDirectory}\"");
             return 1;
         }
         const string statusFileName = "Status.json";
         var statusFilePath = Path.Combine(unturnedPath, statusFileName);
-        if (File.Exists(statusFilePath) == false)
+        if (!File.Exists(statusFilePath))
         {
             throw new FileNotFoundException("Status file is not found", statusFilePath);
         }
@@ -99,7 +98,7 @@ internal class Program
 
         doc.Save(nuspecFilePath);
 
-        var updatedFiles = UpdateRedist(managedDirectory);
+        var updatedFiles = await UpdateRedist(managedDirectory);
         if (updatedFiles.Count == 0)
         {
             Console.WriteLine($"No one file were updated, perhaps something went wrong.");
@@ -126,7 +125,8 @@ internal class Program
                 throw new PlatformNotSupportedException();
             }
         }
-        Dictionary<string, string> UpdateRedist(string unturnedManagedDirectory)
+
+        async Task<Dictionary<string, string>> UpdateRedist(string unturnedManagedDirectory)
         {
             var managedFiles = new DirectoryInfo(unturnedManagedDirectory).GetFiles();
             if (managedFiles.Length == 0)
@@ -134,20 +134,22 @@ internal class Program
                 throw new InvalidOperationException($"{unturnedManagedDirectory} directory was empty");
             }
 
-            var updatedFiles = new Dictionary<string, string>();
+            Dictionary<string, string> updatedFiles = [];
+            Dictionary<string, string> manifest = [];
             foreach (var fileInfo in managedFiles)
             {
                 try
                 {
                     var managedFilePath = fileInfo.FullName;
                     var redistFilePath = Path.Combine(redistPath, fileInfo.Name);
-                    if (File.Exists(redistFilePath) == false)
+                    var managedHash = HashHelper.GetFileHash(managedFilePath);
+                    manifest[fileInfo.Name] = managedHash;
+                    if (!File.Exists(redistFilePath))
                     {
                         continue;
                     }
-                    var managedFileData = File.ReadAllBytes(managedFilePath);
-                    var redistFileData = File.ReadAllBytes(redistFilePath);
-                    if (HashHelper.IsSameHashes(managedFileData, redistFileData))
+                    var redistHash = HashHelper.GetFileHash(redistFilePath);
+                    if (managedHash == redistHash)
                     {
                         continue;
                     }
@@ -161,9 +163,14 @@ internal class Program
                 }
             }
 
+            var manifestPath = Path.Combine(redistPath, "manifest.sha256.json");
+            await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest, ManifestJsonSerializerOptions));
+
             return updatedFiles;
         }
     }
+
+    private static readonly JsonSerializerOptions ManifestJsonSerializerOptions = new() { WriteIndented = true };
 
     private static string GetUnturnedDataDirectoryName(string unturnedPath)
     {
@@ -188,7 +195,7 @@ internal class Program
 
         var appmanifestFileName = $"appmanifest_{appId}.acf";
         var appmanifestFilePath = Path.Combine(steamappsPath, appmanifestFileName);
-        if (File.Exists(appmanifestFilePath) == false)
+        if (!File.Exists(appmanifestFilePath))
         {
             throw new FileNotFoundException("Required file is not found", appmanifestFilePath);
         }
@@ -204,17 +211,20 @@ internal class Program
 
 internal static class HashHelper
 {
-    public static string GetHashFromArray(byte[] data)
+    public static string GetFileHash(string filePath)
     {
         using var sha = SHA256.Create();
-        using var input = new MemoryStream(data);
-        var output = sha.ComputeHash(input);
-        const string minusSymbol = "-";
-        return BitConverter
-            .ToString(output)
-            .Replace(minusSymbol, string.Empty)
-            .ToLowerInvariant();
+        using var stream = File.OpenRead(filePath);
+        var hash = sha.ComputeHash(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
+
+    public static string GetHashFromArray(byte[] data)
+    {
+        var hash = SHA256.HashData(data);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
     public static bool IsSameHashes(byte[] managedFileData, byte[] redistFileData)
     {
         return GetHashFromArray(managedFileData) == GetHashFromArray(redistFileData);
