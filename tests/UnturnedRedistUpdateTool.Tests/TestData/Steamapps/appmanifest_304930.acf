@@ -1,0 +1,55 @@
+"AppState"
+{
+	"appid"		"304930"
+	"universe"		"1"
+	"LauncherPath"		"C:\\User\\Games\\Steam\\steam.exe"
+	"name"		"Unturned"
+	"StateFlags"		"4"
+	"installdir"		"Unturned"
+	"lastupdated"		"del"
+	"LastPlayed"		"del"
+	"SizeOnDisk"		"2206763355"
+	"StagingSize"		"0"
+	"buildid"		"18694317"
+	"LastOwner"		"del"
+	"DownloadType"		"2"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"8461904"
+	"BytesDownloaded"		"8461904"
+	"BytesToStage"		"67161521"
+	"BytesStaged"		"67161521"
+	"TargetBuildID"		"0"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"0"
+	"ScheduledAutoUpdate"		"0"
+	"InstalledDepots"
+	{
+		"304935"
+		{
+			"manifest"		"323141204869650963"
+			"size"		"553343683"
+		}
+		"304933"
+		{
+			"manifest"		"7794234736530141023"
+			"size"		"1648985856"
+		}
+		"304938"
+		{
+			"manifest"		"1291876203824052388"
+			"size"		"4433816"
+		}
+	}
+	"InstallScripts"
+	{
+		"304935"		"install.vdf"
+	}
+	"UserConfig"
+	{
+		"language"		"english"
+	}
+	"MountedConfig"
+	{
+		"language"		"english"
+	}
+}

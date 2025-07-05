@@ -1,0 +1,75 @@
+name: RedistTool
+
+on:
+  create:
+    tags:
+      - "*"
+  push:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/RedistTool.yaml'
+      - 'src/**'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - '.github/workflows/RedistTool.yaml'
+      - 'src/**'
+      - 'tests/**'
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_NOLOGO: true
+          DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+          DOTNET_CLI_TELEMETRY_OPTOUT: true
+        with:
+          dotnet-version: 9.x
+
+      - name: Build UnturnedRedistUpdateTool
+        uses: ./.github/actions/project-build
+        id: auto-installer-build
+        with:
+          project_path: src/UnturnedRedistUpdateTool
+          github_token: ${{ secrets.PAT }}
+
+      - name: Install zip
+        run: sudo apt-get install zip
+
+      - name: Zip UnturnedRedistUpdateTool artifacts
+        run: "cd ./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool && zip -qq -r ./UnturnedRedistUpdateTool.zip *"
+
+      - name: Upload UnturnedRedistUpdateTool
+        uses: actions/upload-artifact@v4
+        with:
+          name: UnturnedRedistUpdateTool.zip
+          path: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.zip"
+          if-no-files-found: error
+
+      - name: Upload UnturnedRedistUpdateTool
+        uses: actions/upload-artifact@v4
+        with:
+          name: UnturnedRedistUpdateTool.zip
+          path: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.zip"
+          if-no-files-found: error
+
+      - name: Create Release
+        if: github.event_name == 'create' && github.event.ref_type == 'tag'
+        uses: ncipollo/release-action@v1
+        with:
+          name: UnturnedRedistUpdateTool Release v${{ steps.auto-installer-build.outputs.version }}
+          tag: ${{ steps.auto-installer-build.outputs.version }}
+          artifacts: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.zip"
+          token: ${{ secrets.PAT }}
+          prerelease: ${{ steps.auto-installer-build.outputs.is_prerelease }}
+          allowUpdates: true
+          draft: true
