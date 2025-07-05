@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get install zip
 
       - name: Zip UnturnedRedistUpdateTool artifacts
-        run: "cd ./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool && zip -qq -r ./UnturnedRedistUpdateTool.zip *"
+        run: "cd ./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64 && zip -qq -r ./UnturnedRedistUpdateTool.zip *"
 
       - name: Upload UnturnedRedistUpdateTool
         uses: actions/upload-artifact@v4
