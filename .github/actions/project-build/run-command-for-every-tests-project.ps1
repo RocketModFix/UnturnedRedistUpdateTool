@@ -22,9 +22,23 @@ Get-ChildItem -Path $testsFolderPath -Directory -Recurse `
 | ForEach-Object {
     $testsProjectName = $_.Name
     $testsProjectPath = Join-Path -Path $testsFolderPath -ChildPath $testsProjectName
-    Write-Output "Tests project found: $testsProjectPath. Executing a command: $commandToExecute"
-    bash -c "PROJECT_PATH=$testsProjectPath && $commandToExecute"
-    if ($LASTEXITCODE -ne 0) {
-        $global:exitCode = $LASTEXITCODE
+    Write-Host "Tests project found: $testsProjectPath. Executing a command: $commandToExecute"
+    try {
+        bash -c "PROJECT_PATH=$testsProjectPath && $commandToExecute"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Command failed with exit code $LASTEXITCODE"
+            $global:exitCode = $LASTEXITCODE
+        }
     }
+    catch {
+        Write-Host "Exception while running command in: $testsProjectPath"
+        $global:exitCode = 1
+    }
+}
+
+if ($global:exitCode -ne 0) {
+    Write-Host "`nOne or more test commands failed."
+    exit $global:exitCode
+} else {
+    Write-Host "`nAll test projects executed successfully."
 }
