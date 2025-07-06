@@ -92,7 +92,7 @@ internal class Program
         }
         Console.WriteLine($"Current nuspec version: {currentNuspecVersion}");
 
-        var versionTracker = new VersionTracker(redistPath);
+        var versionTracker = new VersionTracker(redistPath, preview);
         var versionInfo = await versionTracker.LoadAsync();
 
         var redistUpdater = new RedistUpdater(managedDirectory, redistPath);

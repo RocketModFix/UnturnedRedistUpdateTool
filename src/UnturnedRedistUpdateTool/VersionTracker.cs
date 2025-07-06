@@ -16,39 +16,22 @@ public class VersionTracker
     private static readonly JsonSerializerOptions JsonSerializerOptions = new() { WriteIndented = true };
     private readonly string _versionFilePath;
 
-    public VersionTracker(string redistPath)
+    public VersionTracker(string redistPath, bool preview)
     {
-        _versionFilePath = Path.Combine(redistPath, "version-info.json");
+        _versionFilePath = Path.Combine(redistPath, preview ? "version.preview.json" : "version.json");
     }
 
     public async Task<VersionInfo?> LoadAsync()
     {
         if (!File.Exists(_versionFilePath))
             return null;
-
-        try
-        {
-            var json = await File.ReadAllTextAsync(_versionFilePath);
-            return JsonSerializer.Deserialize<VersionInfo>(json);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Could not load version info: {ex}");
-            return null;
-        }
+        var json = await File.ReadAllTextAsync(_versionFilePath);
+        return JsonSerializer.Deserialize<VersionInfo>(json);
     }
 
-    public async Task SaveAsync(VersionInfo versionInfo)
+    public async Task SaveAsync(VersionInfo info)
     {
-        try
-        {
-            var json = JsonSerializer.Serialize(versionInfo, JsonSerializerOptions);
-            await File.WriteAllTextAsync(_versionFilePath, json);
-            Console.WriteLine($"Version info saved to: {_versionFilePath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Could not save version info: {ex}");
-        }
+        var json = JsonSerializer.Serialize(info, JsonSerializerOptions);
+        await File.WriteAllTextAsync(_versionFilePath, json);
     }
 }
