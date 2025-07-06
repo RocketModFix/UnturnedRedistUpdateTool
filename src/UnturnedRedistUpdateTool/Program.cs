@@ -1,4 +1,6 @@
 ﻿using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace UnturnedRedistUpdateTool;
 
@@ -27,6 +29,7 @@ internal class Program
         var redistPath = args[1];
         var appId = args[2];
         var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
+        var preview = args.Any(x => x.Equals("--preview", StringComparison.OrdinalIgnoreCase));
 
         if (string.IsNullOrWhiteSpace(appId))
         {
@@ -66,19 +69,19 @@ internal class Program
             Console.WriteLine($"Unturned Managed Directory not found: \"{managedDirectory}\"");
             return 1;
         }
-        var (newVersion, buildId) = await GameInfoParser.ParseAsync(unturnedPath, appManifestPath);
+        var (newVersion, newBuildId) = await GameInfoParser.ParseAsync(unturnedPath, appManifestPath);
         if (string.IsNullOrWhiteSpace(newVersion))
         {
             Console.WriteLine("New Game Version is not found");
             return 1;
         }
-        if (string.IsNullOrWhiteSpace(buildId))
+        if (string.IsNullOrWhiteSpace(newBuildId))
         {
             Console.WriteLine("New Game BuildId is not found");
             return 1;
         }
 
-        Console.WriteLine($"Found Unturned v{newVersion} ({buildId})");
+        Console.WriteLine($"Found Unturned v{newVersion} ({newBuildId})");
 
         var nuspecHandler = new NuspecHandler(nuspecFilePath);
         var currentNuspecVersion = nuspecHandler.GetVersion();
@@ -87,32 +90,55 @@ internal class Program
             Console.WriteLine("Version element not found in nuspec file!");
             return 1;
         }
-        var newVersionWithBuildId = nuspecHandler.CreateVersion(newVersion, buildId);
         Console.WriteLine($"Current nuspec version: {currentNuspecVersion}");
-        Console.WriteLine($"New Version & Build Id: {newVersionWithBuildId}");
-        if (newVersionWithBuildId == currentNuspecVersion)
-        {
-            Console.WriteLine("Unturned Version is the same as in nuspec, it means new version is not detected, skipping...");
-            return 1;
-        }
-        nuspecHandler.UpdateVersion(newVersionWithBuildId);
-        nuspecHandler.Save();
+
+        var versionTracker = new VersionTracker(redistPath);
+        var versionInfo = await versionTracker.LoadAsync();
 
         var redistUpdater = new RedistUpdater(managedDirectory, redistPath);
         var updatedFiles = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
-            Console.WriteLine("No one file were updated, perhaps something went wrong.");
+            Console.WriteLine("No files were updated - either no changes or something went wrong.");
+            if (versionInfo?.BuildId == newBuildId)
+            {
+                Console.WriteLine("Build ID is the same, no update needed.");
+                return 0;
+            }
+            Console.WriteLine("Build ID changed but no files updated - this might be an issue.");
             return 1;
         }
+        Console.WriteLine($"{updatedFiles.Count} Unturned's file(s) were updated");
+        var combinedHash = CreateCombinedHash(updatedFiles);
+        Console.WriteLine($"Combined hash of updated files: {combinedHash}");
+        var versionToUse = DetermineVersionToUse(newVersion, newBuildId, currentNuspecVersion, versionInfo, combinedHash, preview);
+        Console.WriteLine($"New Version: {newVersion}");
+        Console.WriteLine($"New Build Id: {newBuildId}");
+        Console.WriteLine($"Version to use: {versionToUse}");
+        if (versionToUse == currentNuspecVersion)
+        {
+            Console.WriteLine("Files haven't changed since last publish, skipping...");
+            return 0;
+        }
+        await versionTracker.SaveAsync(new VersionInfo
+        {
+            GameVersion = newVersion,
+            BuildId = newBuildId,
+            NugetVersion = versionToUse,
+            FilesHash = combinedHash,
+            LastUpdated = DateTime.UtcNow
+        });
+
+        nuspecHandler.UpdateVersion(versionToUse);
+        nuspecHandler.Save();
 
         Console.WriteLine($"Updated {updatedFiles.Count} File(s)");
-        foreach (var (fromPath, toPath) in updatedFiles)
+        foreach (var (filePath, sha256) in updatedFiles)
         {
-            Console.WriteLine($"Updated File \"{fromPath}\" -> \"{toPath}\"");
+            Console.WriteLine($"Updated File \"{filePath}\" (SHA256: {sha256[..8]}...)");
         }
 
-        await new CommitFileWriter().WriteAsync(unturnedPath, newVersion, buildId, force);
+        await new CommitFileWriter().WriteAsync(unturnedPath, versionToUse, newBuildId, force);
 
         return 0;
 
@@ -146,5 +172,35 @@ internal class Program
             }
             throw new DirectoryNotFoundException($"Unturned Data directory cannot be found in {unturnedPath}");
         }
+    }
+
+    private static string CreateCombinedHash(Dictionary<string, string> updatedFiles)
+    {
+        var sortedFiles = updatedFiles.OrderBy(kvp => kvp.Key).ToList();
+        var combinedData = new StringBuilder();
+        foreach (var (filePath, fileHash) in sortedFiles)
+        {
+            combinedData.Append($"{Path.GetFileName(filePath)}:{fileHash}");
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combinedData.ToString())));
+    }
+
+    private static string DetermineVersionToUse(string gameVersion, string buildId, string currentNuspecVersion,
+        VersionInfo? versionInfo, string newFilesHash, bool preview)
+    {
+        if (versionInfo?.FilesHash == newFilesHash)
+        {
+            Console.WriteLine("Files haven't changed, keeping current version");
+            return currentNuspecVersion;
+        }
+        if (versionInfo?.GameVersion != gameVersion)
+        {
+            Console.WriteLine("Game version changed, using new game version");
+            return gameVersion;
+        }
+        Console.WriteLine("Same game version but files changed");
+        return preview
+            ? $"{gameVersion}-preview{buildId}"
+            : gameVersion;
     }
 }

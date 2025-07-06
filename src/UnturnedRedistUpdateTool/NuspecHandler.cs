@@ -24,10 +24,5 @@ public class NuspecHandler
         versionElement.Value = newVersion;
     }
 
-    public string CreateVersion(string version, string buildId)
-    {
-        return $"{version}-build{buildId}";
-    }
-
     public void Save() => _doc.Save(_nuspecFilePath);
 }

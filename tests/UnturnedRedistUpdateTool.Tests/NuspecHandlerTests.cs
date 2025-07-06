@@ -41,12 +41,4 @@ public class NuspecHandlerTests
         var reloadedHandler = new NuspecHandler(tempNuspecPath);
         reloadedHandler.GetVersion().ShouldBe(newVersion);
     }
-
-    [Fact]
-    public void CreateVersion_ShouldReturnCorrectFormat()
-    {
-        var handler = new NuspecHandler(_realNuspecPath);
-        var result = handler.CreateVersion("3.25.7.2", "20398");
-        result.ShouldBe("3.25.7.2-build20398");
-    }
 }
