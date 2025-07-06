@@ -14,15 +14,30 @@ $projectPath = $args[0]
 $projectName = Split-Path -Path $projectPath -Leaf
 $testsFolderPath = Join-Path -Path $projectPath -ChildPath "../tests"
 $global:exitCode = 0
-
 $commandToExecute = $args[1]
+$allowNoTests = $args.Count -ge 3 -and $args[2] -eq "--allow-no-tests"
 
-Get-ChildItem -Path $testsFolderPath -Directory -Recurse `
-| Where-Object { $_.Name -match "^$projectName.*Tests$" } `
-| ForEach-Object {
-    $testsProjectName = $_.Name
+$testsFound = @(
+    Get-ChildItem -Path $testsFolderPath -Directory -Recurse |
+    Where-Object { $_.Name -match "^$projectName.*Tests$" }
+)
+
+if ($testsFound.Count -eq 0) {
+    if ($allowNoTests) {
+        Write-Host "No test projects found for project '$projectName', but skipping due to --allow-no-tests flag."
+        exit 0
+    }
+    else {
+        Write-Host "No test projects found for project '$projectName'."
+        exit 1
+    }
+}
+
+foreach ($testProject in $testsFound) {
+    $testsProjectName = $testProject.Name
     $testsProjectPath = Join-Path -Path $testsFolderPath -ChildPath $testsProjectName
     Write-Host "Tests project found: $testsProjectPath. Executing a command: $commandToExecute"
+
     try {
         bash -c "PROJECT_PATH=$testsProjectPath && $commandToExecute"
         if ($LASTEXITCODE -ne 0) {
@@ -39,6 +54,7 @@ Get-ChildItem -Path $testsFolderPath -Directory -Recurse `
 if ($global:exitCode -ne 0) {
     Write-Host "`nOne or more test commands failed."
     exit $global:exitCode
-} else {
+}
+else {
     Write-Host "`nAll test projects executed successfully."
 }

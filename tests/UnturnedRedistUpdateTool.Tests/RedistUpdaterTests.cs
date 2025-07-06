@@ -1,4 +1,5 @@
 using Shouldly;
+using UnturnedRedistUpdateTool.Tests.Helpers;
 using Xunit;
 
 namespace UnturnedRedistUpdateTool.Tests;
@@ -8,9 +9,10 @@ public class RedistUpdaterTests
     [Fact]
     public async Task ShouldCopyOnlyChangedFilesAndGenerateManifest()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        var source = Path.Combine(tempDir, "source");
-        var target = Path.Combine(tempDir, "target");
+        using var tempDir = new TempDir();
+        var sourceDir = tempDir.Path;
+        var source = Path.Combine(sourceDir, "source");
+        var target = Path.Combine(sourceDir, "target");
         Directory.CreateDirectory(source);
         Directory.CreateDirectory(target);
 
@@ -25,7 +27,5 @@ public class RedistUpdaterTests
 
         var manifest = File.ReadAllText(Path.Combine(target, "manifest.sha256.json"));
         manifest.ShouldContain("Test.dll");
-
-        Directory.Delete(tempDir, true);
     }
 }

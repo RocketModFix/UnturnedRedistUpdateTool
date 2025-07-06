@@ -10,6 +10,12 @@
     <InformationalVersion>$(RedistUpdateToolVersion)</InformationalVersion>
   </PropertyGroup>
 
+  <ItemGroup Condition=" $(Configuration) == 'Debug' ">
+    <None Update="TempRedist\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="SharpZipLib" Version="1.4.2"/>
     <PackageReference Include="ValveKeyValue" Version="0.13.1.398"/>

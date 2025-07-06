@@ -11,6 +11,13 @@ internal class Program
 
         AssertPlatformSupported();
 
+#if DEBUG
+        if (args.Length == 0)
+        {
+            args = [@"C:\Me\Apps\Steam\steamapps\common\Unturned", Path.Combine(AppContext.BaseDirectory, "TempRedist", "Client"), "304930", "--force"];
+        }
+#endif
+
         if (args.Length < 3)
         {
             Console.WriteLine("Wrong usage. Correct usage: UnturnedRedistUpdateTool.exe <unturned_path> <redist_path> <app_id> [args]");
@@ -50,12 +57,8 @@ internal class Program
 
         Console.WriteLine("Preparing to run tool...");
 
-        var steamappsDirectory = Path.Combine(unturnedPath, "steamapps");
-        if (!Directory.Exists(steamappsDirectory))
-        {
-            Console.WriteLine($"steamapps Directory not found: \"{steamappsDirectory}\"");
-            return 1;
-        }
+        var appManifestPath = GameInfoParser.FindAppManifestFile(unturnedPath, appId);
+
         var unturnedDataPath = GetUnturnedDataDirectoryName();
         var managedDirectory = Path.Combine(unturnedDataPath, "Managed");
         if (!Directory.Exists(managedDirectory))
@@ -63,13 +66,7 @@ internal class Program
             Console.WriteLine($"Unturned Managed Directory not found: \"{managedDirectory}\"");
             return 1;
         }
-        const string statusFileName = "Status.json";
-        var statusFilePath = Path.Combine(unturnedPath, statusFileName);
-        if (!File.Exists(statusFilePath))
-        {
-            throw new FileNotFoundException("Status file is not found", statusFilePath);
-        }
-        var (newVersion, buildId) = await new GameInfoParser().ParseAsync(unturnedPath, steamappsDirectory, appId);
+        var (newVersion, buildId) = await GameInfoParser.ParseAsync(unturnedPath, appManifestPath);
         if (string.IsNullOrWhiteSpace(newVersion))
         {
             Console.WriteLine("New Game Version is not found");

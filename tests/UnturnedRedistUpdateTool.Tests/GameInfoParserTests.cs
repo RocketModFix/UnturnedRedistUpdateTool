@@ -12,27 +12,26 @@ public class GameInfoParserTests
     {
         var testDataDir = Path.Combine(AppContext.BaseDirectory, "TestData");
         var unturnedPath = Path.Combine(testDataDir, "Unturned");
-        var steamappsPath = Path.Combine(testDataDir, "Steamapps");
 
-        var parser = new GameInfoParser();
-
-        var (version, buildId) = await parser.ParseAsync(unturnedPath, steamappsPath, appId);
+        var appManifest = GameInfoParser.FindAppManifestFile(testDataDir, appId);
+        var (version, buildId) = await GameInfoParser.ParseAsync(unturnedPath, appManifest);
 
         version.ShouldBe(expectedVersion);
         buildId.ShouldBe(expectedBuildId);
     }
 
-    [Fact]
-    public async Task ThrowsFileNotFoundException_WhenAppManifestMissing()
+    [Theory]
+    [InlineData("missing_appid")]
+    [InlineData("123456789")]
+    [InlineData("")]
+    [InlineData("null")]
+    [InlineData(" ")]
+    public void ThrowsFileNotFoundException_WhenAppManifestMissing(string appId)
     {
         var testDataDir = Path.Combine(AppContext.BaseDirectory, "TestData");
         var unturnedPath = Path.Combine(testDataDir, "Unturned");
-        var steamappsPath = Path.Combine(testDataDir, "Steamapps");
-        var appId = "missing_appid";
 
-        var parser = new GameInfoParser();
-
-        await Should.ThrowAsync<FileNotFoundException>(async () =>
-            await parser.ParseAsync(unturnedPath, steamappsPath, appId));
+        Should.Throw<FileNotFoundException>(() =>
+            GameInfoParser.FindAppManifestFile(unturnedPath, appId));
     }
 }
