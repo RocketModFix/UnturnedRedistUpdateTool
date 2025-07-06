@@ -12,10 +12,12 @@
 
 $projectPath = $args[0]
 $projectName = Split-Path -Path $projectPath -Leaf
-$testsFolderPath = Join-Path -Path $projectPath -ChildPath "../tests"
+$testsFolderPath = Join-Path -Path $PSScriptRoot -ChildPath "../../../tests"
 $global:exitCode = 0
 $commandToExecute = $args[1]
 $allowNoTests = $args.Count -ge 3 -and $args[2] -eq "--allow-no-tests"
+
+Write-Host "Looking for tests in: $testsFolderPath"
 
 $testsFound = @(
     Get-ChildItem -Path $testsFolderPath -Directory -Recurse |
