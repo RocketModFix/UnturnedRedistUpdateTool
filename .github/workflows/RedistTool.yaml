@@ -7,11 +7,15 @@ on:
   push:
     branches: [ master ]
     paths:
+      - '.github/actions/project-build/action.yaml'
+      - '.github/actions/project-build/run-command-for-every-tests-project.ps1'
       - '.github/workflows/RedistTool.yaml'
       - 'src/**'
       - 'tests/**'
   pull_request:
     paths:
+      - '.github/actions/project-build/action.yaml'
+      - '.github/actions/project-build/run-command-for-every-tests-project.ps1'
       - '.github/workflows/RedistTool.yaml'
       - 'src/**'
       - 'tests/**'
