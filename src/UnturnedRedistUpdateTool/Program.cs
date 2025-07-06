@@ -87,20 +87,22 @@ internal class Program
             Console.WriteLine("Version element not found in nuspec file!");
             return 1;
         }
+        var newVersionWithBuildId = nuspecHandler.CreateVersion(newVersion, buildId);
         Console.WriteLine($"Current nuspec version: {currentNuspecVersion}");
-        if (newVersion == currentNuspecVersion)
+        Console.WriteLine($"New Version & Build Id: {newVersionWithBuildId}");
+        if (newVersionWithBuildId == currentNuspecVersion)
         {
             Console.WriteLine("Unturned Version is the same as in nuspec, it means new version is not detected, skipping...");
             return 1;
         }
-        nuspecHandler.UpdateVersion(newVersion);
+        nuspecHandler.UpdateVersion(newVersionWithBuildId);
         nuspecHandler.Save();
 
         var redistUpdater = new RedistUpdater(managedDirectory, redistPath);
         var updatedFiles = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
-            Console.WriteLine($"No one file were updated, perhaps something went wrong.");
+            Console.WriteLine("No one file were updated, perhaps something went wrong.");
             return 1;
         }
 
