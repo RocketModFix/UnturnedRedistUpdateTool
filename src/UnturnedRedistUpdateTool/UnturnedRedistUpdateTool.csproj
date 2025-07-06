@@ -12,7 +12,7 @@
 
   <ItemGroup Condition=" $(Configuration) == 'Debug' ">
     <None Update="TempRedist\**\*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

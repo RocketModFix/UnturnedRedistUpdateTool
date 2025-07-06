@@ -14,7 +14,7 @@ public class RedistUpdater
         _redistPath = redistPath;
     }
 
-    public async Task<Dictionary<string, string>> UpdateAsync()
+    public async Task<(Dictionary<string, string> UpdatedFiles, Dictionary<string, string> Manifests)> UpdateAsync()
     {
         Dictionary<string, string> updatedFiles = [];
         Dictionary<string, string> manifest = [];
@@ -37,6 +37,6 @@ public class RedistUpdater
         }
         var manifestPath = Path.Combine(_redistPath, "manifest.sha256.json");
         await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest, ManifestJsonSerializerOptions));
-        return updatedFiles;
+        return (updatedFiles, manifest);
     }
 }

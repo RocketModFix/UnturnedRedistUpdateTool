@@ -16,16 +16,31 @@ public class RedistUpdaterTests
         Directory.CreateDirectory(source);
         Directory.CreateDirectory(target);
 
+        // Create one changed file and one unchanged file
         File.WriteAllText(Path.Combine(source, "Test.dll"), "hello");
         File.WriteAllText(Path.Combine(target, "Test.dll"), "stale");
 
+        File.WriteAllText(Path.Combine(source, "Unchanged.dll"), "same");
+        File.WriteAllText(Path.Combine(target, "Unchanged.dll"), "same");
+
         var updater = new RedistUpdater(source, target);
-        var updated = await updater.UpdateAsync();
+        var (updated, manifests) = await updater.UpdateAsync();
 
         updated.ShouldContainKey(Path.Combine(source, "Test.dll"));
+        updated.ShouldNotContainKey(Path.Combine(source, "Unchanged.dll"));
+
         File.ReadAllText(Path.Combine(target, "Test.dll")).ShouldBe("hello");
 
-        var manifest = File.ReadAllText(Path.Combine(target, "manifest.sha256.json"));
-        manifest.ShouldContain("Test.dll");
+        // Manifest checks
+        manifests.ShouldContainKey("Test.dll");
+        manifests.ShouldContainKey("Unchanged.dll");
+        manifests.Count.ShouldBe(2);
+
+        var manifestPath = Path.Combine(target, "manifest.sha256.json");
+        File.Exists(manifestPath).ShouldBeTrue();
+
+        var manifestContent = File.ReadAllText(manifestPath);
+        manifestContent.ShouldContain("Test.dll");
+        manifestContent.ShouldContain("Unchanged.dll");
     }
 }

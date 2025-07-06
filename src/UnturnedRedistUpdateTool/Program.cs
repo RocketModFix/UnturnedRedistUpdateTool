@@ -96,7 +96,7 @@ internal class Program
         var versionInfo = await versionTracker.LoadAsync();
 
         var redistUpdater = new RedistUpdater(managedDirectory, redistPath);
-        var updatedFiles = await redistUpdater.UpdateAsync();
+        var (updatedFiles, manifests) = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
             Console.WriteLine("No files were updated - either no changes or something went wrong.");
@@ -109,22 +109,23 @@ internal class Program
             return 1;
         }
         Console.WriteLine($"{updatedFiles.Count} Unturned's file(s) were updated");
-        var combinedHash = CreateCombinedHash(updatedFiles);
+        var combinedHash = CreateCombinedHash(manifests);
         Console.WriteLine($"Combined hash of updated files: {combinedHash}");
+        Console.WriteLine($"Old Combined hash of updated files: {versionInfo?.FilesHash}");
         var versionToUse = DetermineVersionToUse(newVersion, newBuildId, currentNuspecVersion, versionInfo, combinedHash, preview);
         Console.WriteLine($"New Version: {newVersion}");
         Console.WriteLine($"New Build Id: {newBuildId}");
         Console.WriteLine($"Version to use: {versionToUse}");
         if (versionToUse == currentNuspecVersion)
         {
-            Console.WriteLine("Files haven't changed since last publish, skipping...");
+            Console.WriteLine("Skip. nuspec and version to use are same.");
             return 0;
         }
         await versionTracker.SaveAsync(new VersionInfo
         {
             GameVersion = newVersion,
             BuildId = newBuildId,
-            NugetVersion = versionToUse,
+            NuGetVersion = versionToUse,
             FilesHash = combinedHash,
             LastUpdated = DateTime.UtcNow
         });
@@ -133,9 +134,12 @@ internal class Program
         nuspecHandler.Save();
 
         Console.WriteLine($"Updated {updatedFiles.Count} File(s)");
-        foreach (var (filePath, sha256) in updatedFiles)
+        foreach (var (fromPath, toPath) in updatedFiles)
         {
-            Console.WriteLine($"Updated File \"{filePath}\" (SHA256: {sha256[..8]}...)");
+            var fileName = Path.GetFileName(toPath);
+            if (!manifests.TryGetValue(fileName, out var sha256))
+                continue;
+            Console.WriteLine($"{fileName} (SHA256: {sha256[..8]}...)");
         }
 
         await new CommitFileWriter().WriteAsync(unturnedPath, versionToUse, newBuildId, force);
@@ -174,13 +178,13 @@ internal class Program
         }
     }
 
-    private static string CreateCombinedHash(Dictionary<string, string> updatedFiles)
+    private static string CreateCombinedHash(Dictionary<string, string> manifests)
     {
-        var sortedFiles = updatedFiles.OrderBy(kvp => kvp.Key).ToList();
+        var sortedFiles = manifests.OrderBy(kvp => kvp.Key).ToList();
         var combinedData = new StringBuilder();
-        foreach (var (filePath, fileHash) in sortedFiles)
+        foreach (var (fileName, fileHash) in sortedFiles)
         {
-            combinedData.Append($"{Path.GetFileName(filePath)}:{fileHash}");
+            combinedData.Append($"{fileName}:{fileHash}");
         }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combinedData.ToString())));
     }

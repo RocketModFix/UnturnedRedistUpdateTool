@@ -6,7 +6,7 @@ public class VersionInfo
 {
     public string GameVersion { get; set; } = "";
     public string BuildId { get; set; } = "";
-    public string NugetVersion { get; set; } = "";
+    public string NuGetVersion { get; set; } = "";
     public string FilesHash { get; set; } = "";
     public DateTime LastUpdated { get; set; }
 }
