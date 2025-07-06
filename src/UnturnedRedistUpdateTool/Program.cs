@@ -95,6 +95,8 @@ internal class Program
         var versionTracker = new VersionTracker(redistPath, preview);
         var versionInfo = await versionTracker.LoadAsync();
 
+        Console.WriteLine($"Current Build Id: {versionInfo?.BuildId}");
+
         var redistUpdater = new RedistUpdater(managedDirectory, redistPath);
         var (updatedFiles, manifests) = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
