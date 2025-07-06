@@ -156,25 +156,13 @@ internal class Program
 
         string GetUnturnedDataDirectoryName()
         {
-            if (linux)
-            {
-                const string linuxUnturnedDataDirectoryName = "Unturned_Headless_Data";
-                var headless = Path.Combine(unturnedPath, linuxUnturnedDataDirectoryName);
-                if (Directory.Exists(headless))
-                {
-                    return headless;
-                }
-            }
-            else if (windows)
-            {
-                const string windowsUnturnedDataDirectoryName = "Unturned_Data";
-                var usual = Path.Combine(unturnedPath, windowsUnturnedDataDirectoryName);
-                if (Directory.Exists(usual))
-                {
-                    return usual;
-                }
-            }
-            throw new DirectoryNotFoundException($"Unturned Data directory cannot be found in {unturnedPath}");
+            string[] possiblePath =
+            [
+                Path.Combine(unturnedPath, "Unturned_Headless_Data"),
+                Path.Combine(unturnedPath, "Unturned_Data")
+            ];
+            return possiblePath.FirstOrDefault(Directory.Exists)
+                   ?? throw new DirectoryNotFoundException($"Unturned Data directory cannot be found in {unturnedPath}");
         }
     }
 
