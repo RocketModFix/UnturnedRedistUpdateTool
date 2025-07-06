@@ -114,7 +114,16 @@ internal class Program
         var combinedHash = CreateCombinedHash(manifests);
         Console.WriteLine($"Combined hash of updated files: {combinedHash}");
         Console.WriteLine($"Old Combined hash of updated files: {versionInfo?.FilesHash}");
-        var versionToUse = DetermineVersionToUse(newVersion, newBuildId, currentNuspecVersion, versionInfo, combinedHash, preview);
+
+        if (versionInfo?.FilesHash == combinedHash)
+        {
+            Console.WriteLine("Files haven't changed, keeping current version");
+            return 0;
+        }
+        Console.WriteLine("Files are different now!");
+        var versionToUse = preview
+            ? $"{newVersion}-preview{newBuildId}"
+            : newVersion;
         Console.WriteLine($"New Version: {newVersion}");
         Console.WriteLine($"New Build Id: {newBuildId}");
         Console.WriteLine($"Version to use: {versionToUse}");
@@ -177,24 +186,5 @@ internal class Program
             combinedData.Append($"{fileName}:{fileHash}");
         }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combinedData.ToString())));
-    }
-
-    private static string DetermineVersionToUse(string gameVersion, string buildId, string currentNuspecVersion,
-        VersionInfo? versionInfo, string newFilesHash, bool preview)
-    {
-        if (versionInfo?.FilesHash == newFilesHash)
-        {
-            Console.WriteLine("Files haven't changed, keeping current version");
-            return currentNuspecVersion;
-        }
-        if (versionInfo?.GameVersion != gameVersion)
-        {
-            Console.WriteLine("Game version changed, using new game version");
-            return gameVersion;
-        }
-        Console.WriteLine("Same game version but files changed");
-        return preview
-            ? $"{gameVersion}-preview{buildId}"
-            : gameVersion;
     }
 }
