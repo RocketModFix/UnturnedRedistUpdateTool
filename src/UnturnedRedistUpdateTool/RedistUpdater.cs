@@ -47,8 +47,6 @@ public class RedistUpdater
         {
             var managedFilePath = file.FullName;
             var redistFilePath = Path.Combine(_redistPath, file.Name);
-            if (!File.Exists(redistFilePath))
-                continue;
             if (_publicizeAssemblies.Any(x => x == file.Name))
             {
                 AssemblyPublicizer.Publicize(managedFilePath, redistFilePath);
