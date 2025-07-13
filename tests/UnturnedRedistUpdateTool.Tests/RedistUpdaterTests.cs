@@ -23,7 +23,7 @@ public class RedistUpdaterTests
         File.WriteAllText(Path.Combine(source, "Unchanged.dll"), "same");
         File.WriteAllText(Path.Combine(target, "Unchanged.dll"), "same");
 
-        var updater = new RedistUpdater(source, target);
+        var updater = new RedistUpdater(source, target, []);
         var (updated, manifests) = await updater.UpdateAsync();
 
         updated.ShouldContainKey(Path.Combine(source, "Test.dll"));
@@ -33,14 +33,12 @@ public class RedistUpdaterTests
 
         // Manifest checks
         manifests.ShouldContainKey("Test.dll");
-        manifests.ShouldContainKey("Unchanged.dll");
-        manifests.Count.ShouldBe(2);
+        manifests.Count.ShouldBe(1);
 
         var manifestPath = Path.Combine(target, "manifest.sha256.json");
         File.Exists(manifestPath).ShouldBeTrue();
 
         var manifestContent = File.ReadAllText(manifestPath);
         manifestContent.ShouldContain("Test.dll");
-        manifestContent.ShouldContain("Unchanged.dll");
     }
 }

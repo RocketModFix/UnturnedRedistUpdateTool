@@ -16,7 +16,7 @@ internal class Program
 #if DEBUG
         if (args.Length == 0)
         {
-            args = [@"C:\Me\Apps\Steam\steamapps\common\Unturned", Path.Combine(AppContext.BaseDirectory, "TempRedist", "Client"), "304930", "--force"];
+            args = [@"C:\Me\Apps\Steam\steamapps\common\Unturned", Path.Combine(AppContext.BaseDirectory, "TempRedist", "Client"), "304930", "--force", "-publicize", "Assembly-CSharp.dll"];
         }
 #endif
 
@@ -30,6 +30,17 @@ internal class Program
         var appId = args[2];
         var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
         var preview = args.Any(x => x.Equals("--preview", StringComparison.OrdinalIgnoreCase));
+        List<string> publicizeAssemblies = [];
+        var publicizeIndex = Array.FindIndex(args, x => x.Equals("-publicize", StringComparison.OrdinalIgnoreCase));
+        if (publicizeIndex != -1)
+        {
+            for (var i = publicizeIndex + 1; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("-") || args[i].StartsWith("--"))
+                    break;
+                publicizeAssemblies.Add(args[i]);
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(appId))
         {
@@ -97,7 +108,7 @@ internal class Program
 
         Console.WriteLine($"Current Build Id: {versionInfo?.BuildId}");
 
-        var redistUpdater = new RedistUpdater(managedDirectory, redistPath);
+        var redistUpdater = new RedistUpdater(managedDirectory, redistPath, publicizeAssemblies);
         var (updatedFiles, manifests) = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
