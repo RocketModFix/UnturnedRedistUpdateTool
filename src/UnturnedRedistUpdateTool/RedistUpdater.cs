@@ -57,9 +57,12 @@ public class RedistUpdater
             else
             {
                 var managedHash = HashHelper.GetFileHash(managedFilePath);
-                var redistHash = HashHelper.GetFileHash(redistFilePath);
-                if (managedHash == redistHash)
-                    continue;
+                if (File.Exists(redistFilePath))
+                {
+                    var redistHash = HashHelper.GetFileHash(redistFilePath);
+                    if (managedHash == redistHash)
+                        continue;
+                }
                 file.CopyTo(redistFilePath, true);
                 var copiedHash = HashHelper.GetFileHash(redistFilePath);
                 manifests[file.Name] = copiedHash;
