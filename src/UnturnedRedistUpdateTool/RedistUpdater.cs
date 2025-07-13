@@ -9,12 +9,14 @@ public class RedistUpdater
     private readonly string _managedDir;
     private readonly string _redistPath;
     private readonly List<string> _publicizeAssemblies;
+    private readonly List<string> _updateFiles;
 
-    public RedistUpdater(string managedDir, string redistPath, List<string> publicizeAssemblies)
+    public RedistUpdater(string managedDir, string redistPath, List<string> publicizeAssemblies, List<string> updateFiles)
     {
         _managedDir = managedDir;
         _redistPath = redistPath;
         _publicizeAssemblies = publicizeAssemblies;
+        _updateFiles = updateFiles;
     }
 
     public async Task<(Dictionary<string, string> UpdatedFiles, Dictionary<string, string> Manifests)> UpdateAsync()
@@ -24,7 +26,24 @@ public class RedistUpdater
         var managedFiles = new DirectoryInfo(_managedDir).GetFiles();
         if (managedFiles.Length == 0)
             throw new InvalidOperationException($"{_managedDir} is empty");
-        foreach (var file in managedFiles)
+
+        // If updateFiles is empty, process all files
+        // If updateFiles has items, only process those files
+        var filesToProcess = _updateFiles.Count > 0
+            ? managedFiles.Where(f => _updateFiles.Contains(f.Name)).ToArray()
+            : managedFiles;
+
+        // Only validate if updateFiles has items
+        if (_updateFiles.Count > 0)
+        {
+            var existingFileNames = managedFiles.Select(f => f.Name).ToHashSet();
+            var missingFiles = _updateFiles.Where(fileName => !existingFileNames.Contains(fileName)).ToList();
+            if (missingFiles.Count > 0)
+            {
+                throw new FileNotFoundException($"The following files specified in -update-files were not found in the managed directory: {string.Join(", ", missingFiles)}");
+            }
+        }
+        foreach (var file in filesToProcess)
         {
             var managedFilePath = file.FullName;
             var redistFilePath = Path.Combine(_redistPath, file.Name);

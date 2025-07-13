@@ -16,7 +16,7 @@ internal class Program
 #if DEBUG
         if (args.Length == 0)
         {
-            args = [@"C:\Me\Apps\Steam\steamapps\common\Unturned", Path.Combine(AppContext.BaseDirectory, "TempRedist", "Client"), "304930", "--force", "-publicize", "Assembly-CSharp.dll"];
+            args = [@"C:\Me\Apps\Steam\steamapps\common\Unturned", Path.Combine(AppContext.BaseDirectory, "TempRedist", "Client"), "304930", "--force", "-publicize", "Assembly-CSharp.dll", "-update-files", "Assembly-CSharp.dll,UnturnedDat.dll,UnityEx.dll,SystemEx.dll,SDG.NetTransport.dll,SDG.NetPak.Runtime.dll,SDG.HostBans.Runtime.dll,SDG.Glazier.Runtime.dll,com.rlabrecque.steamworks.net.dll"];
         }
 #endif
 
@@ -30,18 +30,13 @@ internal class Program
         var appId = args[2];
         var force = args.Any(x => x.Equals("--force", StringComparison.OrdinalIgnoreCase));
         var preview = args.Any(x => x.Equals("--preview", StringComparison.OrdinalIgnoreCase));
-        List<string> publicizeAssemblies = [];
-        var publicizeIndex = Array.FindIndex(args, x => x.Equals("-publicize", StringComparison.OrdinalIgnoreCase));
-        if (publicizeIndex != -1)
+        var publicizeAssemblies = ParseArrayArg(args, "-publicize");
+        var updateFiles = ParseArrayArg(args, "-update-files");
+        if (updateFiles.Count == 0)
         {
-            for (var i = publicizeIndex + 1; i < args.Length; i++)
-            {
-                if (args[i].StartsWith("-") || args[i].StartsWith("--"))
-                    break;
-                publicizeAssemblies.Add(args[i]);
-            }
+            Console.WriteLine("-update-files is not specified");
+            return 1;
         }
-
         if (string.IsNullOrWhiteSpace(appId))
         {
             Console.WriteLine("AppId is not specified.");
@@ -108,7 +103,7 @@ internal class Program
 
         Console.WriteLine($"Current Build Id: {versionInfo?.BuildId}");
 
-        var redistUpdater = new RedistUpdater(managedDirectory, redistPath, publicizeAssemblies);
+        var redistUpdater = new RedistUpdater(managedDirectory, redistPath, publicizeAssemblies, updateFiles);
         var (updatedFiles, manifests) = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
@@ -197,5 +192,22 @@ internal class Program
             combinedData.Append($"{fileName}:{fileHash}");
         }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combinedData.ToString())));
+    }
+
+    private static List<string> ParseArrayArg(string[] args, string argName)
+    {
+        var index = Array.FindIndex(args, x => x.Equals(argName, StringComparison.OrdinalIgnoreCase));
+        if (index != -1 && index + 1 < args.Length)
+        {
+            var argValue = args[index + 1];
+            if (!argValue.StartsWith("-") && !argValue.StartsWith("--"))
+            {
+                return argValue.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
+            }
+        }
+        return [];
     }
 }
