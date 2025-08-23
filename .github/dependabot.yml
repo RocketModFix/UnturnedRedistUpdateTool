@@ -17,7 +17,7 @@ updates:
     reviewers:
       - "@me"
     assignees:
-      - "@me"
+      - "sunnamed434"
     commit-message:
       prefix: "nuget"
       include: "scope"
@@ -37,7 +37,7 @@ updates:
     reviewers:
       - "@me"
     assignees:
-      - "@me"
+      - "sunnamed434"
     commit-message:
       prefix: "nuget"
       include: "scope"
@@ -57,7 +57,7 @@ updates:
     reviewers:
       - "@me"
     assignees:
-      - "@me"
+      - "sunnamed434"
     commit-message:
       prefix: "github-actions"
       include: "scope"
