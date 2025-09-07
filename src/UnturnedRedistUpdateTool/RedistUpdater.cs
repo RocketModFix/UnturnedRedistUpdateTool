@@ -27,13 +27,10 @@ public class RedistUpdater
         if (managedFiles.Length == 0)
             throw new InvalidOperationException($"{_managedDir} is empty");
 
-        // If updateFiles is empty, process all files
-        // If updateFiles has items, only process those files
         var filesToProcess = _updateFiles.Count > 0
             ? managedFiles.Where(f => _updateFiles.Contains(f.Name)).ToArray()
             : managedFiles;
 
-        // Only validate if updateFiles has items
         if (_updateFiles.Count > 0)
         {
             var existingFileNames = managedFiles.Select(f => f.Name).ToHashSet();
@@ -69,8 +66,30 @@ public class RedistUpdater
             }
             updatedFiles[managedFilePath] = redistFilePath;
         }
+        
+        var completeManifest = await CreateCompleteManifestAsync();
         var manifestPath = Path.Combine(_redistPath, "manifest.sha256.json");
-        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifests, ManifestJsonSerializerOptions));
+        await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(completeManifest, ManifestJsonSerializerOptions));
         return (updatedFiles, manifests);
+    }
+
+    private Task<Dictionary<string, string>> CreateCompleteManifestAsync()
+    {
+        var completeManifest = new Dictionary<string, string>();
+        var redistDirectory = new DirectoryInfo(_redistPath);
+        
+        // Only include files that are specified in updateFiles list
+        // These are the files that can actually be updated from Unturned
+        var relevantFiles = redistDirectory.GetFiles()
+            .Where(f => f.Name != "manifest.sha256.json" && _updateFiles.Contains(f.Name))
+            .ToArray();
+
+        foreach (var file in relevantFiles)
+        {
+            var fileHash = HashHelper.GetFileHash(file.FullName);
+            completeManifest[file.Name] = fileHash;
+        }
+
+        return Task.FromResult(completeManifest);
     }
 }

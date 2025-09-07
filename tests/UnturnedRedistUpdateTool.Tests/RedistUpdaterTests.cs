@@ -21,6 +21,9 @@ public class RedistUpdaterTests
 
         File.WriteAllText(Path.Combine(source, "Unchanged.dll"), "same");
         File.WriteAllText(Path.Combine(target, "Unchanged.dll"), "same");
+        
+        // Add a static file that should not be in manifest
+        File.WriteAllText(Path.Combine(target, "README.md"), "static content");
 
         var updater = new RedistUpdater(source, target, [], ["Test.dll"]);
         var (updated, manifests) = await updater.UpdateAsync();
@@ -38,6 +41,8 @@ public class RedistUpdaterTests
 
         var manifestContent = File.ReadAllText(manifestPath);
         manifestContent.ShouldContain("Test.dll");
+        manifestContent.ShouldNotContain("Unchanged.dll"); // Not in updateFiles list
+        manifestContent.ShouldNotContain("README.md"); // Static file
     }
 
     [Fact]
