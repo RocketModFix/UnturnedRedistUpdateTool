@@ -53,7 +53,7 @@ jobs:
         run: "cd ./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64 && zip -qq -r ./UnturnedRedistUpdateTool.zip *"
 
       - name: Upload UnturnedRedistUpdateTool
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: UnturnedRedistUpdateTool.zip
           path: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool.zip"
