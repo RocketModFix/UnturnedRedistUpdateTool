@@ -7,15 +7,11 @@ on:
   push:
     branches: [ master ]
     paths:
-      - '.github/actions/project-build/action.yaml'
-      - '.github/actions/project-build/run-command-for-every-tests-project.ps1'
       - '.github/workflows/RedistTool.yaml'
       - 'src/**'
       - 'tests/**'
   pull_request:
     paths:
-      - '.github/actions/project-build/action.yaml'
-      - '.github/actions/project-build/run-command-for-every-tests-project.ps1'
       - '.github/workflows/RedistTool.yaml'
       - 'src/**'
       - 'tests/**'
@@ -28,7 +24,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # full history so 'git describe' can derive the version
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -39,15 +35,35 @@ jobs:
         with:
           dotnet-version: 9.x
 
-      - name: Build UnturnedRedistUpdateTool
-        uses: ./.github/actions/project-build
-        id: redist-update-tool-build
-        with:
-          project_path: src/UnturnedRedistUpdateTool
-          github_token: ${{ secrets.PAT }}
+      - name: Create version
+        id: version
+        run: |
+          latest_tag=$(git rev-list --tags --max-count=1)
+          if [ -n "$latest_tag" ]; then
+            version="$(git describe --tags "$latest_tag")+$(git rev-parse --short HEAD)"
+          else
+            version="0.0.0+$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # A '-' (e.g. an "-rc" tag) marks a prerelease; '+build' metadata does not.
+          if [[ "$version" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Install zip
-        run: sudo apt-get install zip
+      - name: Build
+        run: >
+          dotnet build src/UnturnedRedistUpdateTool/UnturnedRedistUpdateTool.csproj
+          --configuration Release
+          --runtime linux-x64
+          -p:RedistUpdateToolVersion=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: >
+          dotnet test tests/UnturnedRedistUpdateTool.Tests/UnturnedRedistUpdateTool.Tests.csproj
+          --configuration Release
+          --runtime linux-x64
 
       - name: Zip UnturnedRedistUpdateTool artifacts
         run: "cd ./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64 && zip -qq -r ./UnturnedRedistUpdateTool.zip *"
@@ -63,10 +79,10 @@ jobs:
         if: github.event_name == 'create' && github.event.ref_type == 'tag'
         uses: ncipollo/release-action@v1
         with:
-          name: UnturnedRedistUpdateTool Release v${{ steps.redist-update-tool-build.outputs.version }}
-          tag: ${{ steps.redist-update-tool-build.outputs.version }}
+          name: UnturnedRedistUpdateTool Release v${{ steps.version.outputs.version }}
+          tag: ${{ steps.version.outputs.version }}
           artifacts: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool.zip"
           token: ${{ secrets.PAT }}
-          prerelease: ${{ steps.redist-update-tool-build.outputs.is_prerelease }}
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
           allowUpdates: true
-          draft: true
+          draft: false
