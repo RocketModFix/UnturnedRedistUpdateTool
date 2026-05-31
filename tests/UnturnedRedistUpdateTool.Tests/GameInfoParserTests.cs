@@ -1,4 +1,5 @@
 using Shouldly;
+using UnturnedRedistUpdateTool.Tests.Helpers;
 using Xunit;
 
 namespace UnturnedRedistUpdateTool.Tests;
@@ -33,5 +34,37 @@ public class GameInfoParserTests
 
         Should.Throw<FileNotFoundException>(() =>
             GameInfoParser.FindAppManifestFile(unturnedPath, appId));
+    }
+
+    private static string AppManifest =>
+        Path.Combine(AppContext.BaseDirectory, "TestData", "steamapps", "appmanifest_1110390.acf");
+
+    [Fact]
+    public async Task ShouldThrowWhenGameSectionMissing()
+    {
+        using var tempDir = new TempDir();
+        await File.WriteAllTextAsync(Path.Combine(tempDir.Path, "Status.json"), "{ \"NotGame\": {} }");
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            GameInfoParser.ParseAsync(tempDir.Path, AppManifest));
+    }
+
+    [Fact]
+    public async Task ShouldThrowWhenVersionFieldsMissing()
+    {
+        using var tempDir = new TempDir();
+        await File.WriteAllTextAsync(Path.Combine(tempDir.Path, "Status.json"), "{ \"Game\": { \"Major_Version\": 25 } }");
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            GameInfoParser.ParseAsync(tempDir.Path, AppManifest));
+    }
+
+    [Fact]
+    public async Task ShouldThrowWhenStatusFileMissing()
+    {
+        using var tempDir = new TempDir();
+
+        await Should.ThrowAsync<FileNotFoundException>(() =>
+            GameInfoParser.ParseAsync(tempDir.Path, AppManifest));
     }
 }

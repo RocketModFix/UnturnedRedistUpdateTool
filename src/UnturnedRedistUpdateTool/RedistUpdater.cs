@@ -67,29 +67,27 @@ public class RedistUpdater
             updatedFiles[managedFilePath] = redistFilePath;
         }
         
-        var completeManifest = await CreateCompleteManifestAsync();
-        var manifestPath = Path.Combine(_redistPath, "manifest.sha256.json");
+        var completeManifest = CreateCompleteManifest();
+        var manifestPath = Path.Combine(_redistPath, Constants.ManifestFileName);
         await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(completeManifest, ManifestJsonSerializerOptions));
         return (updatedFiles, manifests);
     }
 
-    private Task<Dictionary<string, string>> CreateCompleteManifestAsync()
+    private Dictionary<string, string> CreateCompleteManifest()
     {
-        var completeManifest = new Dictionary<string, string>();
         var redistDirectory = new DirectoryInfo(_redistPath);
-        
-        // Only include files that are specified in updateFiles list
-        // These are the files that can actually be updated from Unturned
-        var relevantFiles = redistDirectory.GetFiles()
-            .Where(f => f.Name != "manifest.sha256.json" && _updateFiles.Contains(f.Name))
-            .ToArray();
 
+        // Only the files that can actually be updated from Unturned, sorted by
+        // name so manifest.sha256.json is deterministic (avoids diff churn).
+        var relevantFiles = redistDirectory.GetFiles()
+            .Where(f => f.Name != Constants.ManifestFileName && _updateFiles.Contains(f.Name))
+            .OrderBy(f => f.Name, StringComparer.Ordinal);
+
+        var completeManifest = new Dictionary<string, string>();
         foreach (var file in relevantFiles)
         {
-            var fileHash = HashHelper.GetFileHash(file.FullName);
-            completeManifest[file.Name] = fileHash;
+            completeManifest[file.Name] = HashHelper.GetFileHash(file.FullName);
         }
-
-        return Task.FromResult(completeManifest);
+        return completeManifest;
     }
 }

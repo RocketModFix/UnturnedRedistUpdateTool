@@ -18,7 +18,7 @@ public class VersionTracker
 
     public VersionTracker(string redistPath, bool preview)
     {
-        _versionFilePath = Path.Combine(redistPath, preview ? "version.preview.json" : "version.json");
+        _versionFilePath = Path.Combine(redistPath, preview ? Constants.PreviewVersionFileName : Constants.VersionFileName);
     }
 
     public async Task<VersionInfo?> LoadAsync()

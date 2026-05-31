@@ -15,6 +15,6 @@ public class CommitFileWriter
     {
         var forcedNote = force ? " [Forced]" : "";
         var line = $"{_getTime():dd MMMM yyyy} - Version {version} ({buildId}){forcedNote}";
-        await File.WriteAllTextAsync(Path.Combine(path, ".commit"), line);
+        await File.WriteAllTextAsync(Path.Combine(path, Constants.CommitFileName), line);
     }
 }

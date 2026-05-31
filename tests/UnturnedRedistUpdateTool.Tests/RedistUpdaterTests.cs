@@ -110,4 +110,28 @@ public class RedistUpdaterTests
         exception.Message.ShouldContain("NonExistent.dll");
         exception.Message.ShouldContain("-update-files");
     }
+
+    [Fact]
+    public async Task ShouldPublicizeAssemblyAndRecordItInManifest()
+    {
+        using var tempDir = new TempDir();
+        var source = Path.Combine(tempDir.Path, "source");
+        var target = Path.Combine(tempDir.Path, "target");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(target);
+
+        // Use a real managed assembly so the AssemblyPublicizer can process it.
+        const string dll = "UnturnedRedistUpdateTool.dll";
+        File.Copy(Path.Combine(AppContext.BaseDirectory, dll), Path.Combine(source, dll));
+
+        var updater = new RedistUpdater(source, target, [dll], [dll]);
+        var (updated, manifests) = await updater.UpdateAsync();
+
+        updated.ShouldContainKey(Path.Combine(source, dll));
+        manifests.ShouldContainKey(dll);
+        File.Exists(Path.Combine(target, dll)).ShouldBeTrue();
+
+        var manifestContent = await File.ReadAllTextAsync(Path.Combine(target, "manifest.sha256.json"));
+        manifestContent.ShouldContain(dll);
+    }
 }

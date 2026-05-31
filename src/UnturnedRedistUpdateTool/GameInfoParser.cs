@@ -5,33 +5,62 @@ namespace UnturnedRedistUpdateTool;
 
 public static class GameInfoParser
 {
+    private const string GameSection = "Game";
+    private const string MajorVersionKey = "Major_Version";
+    private const string MinorVersionKey = "Minor_Version";
+    private const string PatchVersionKey = "Patch_Version";
+    private const string BuildIdKey = "buildid";
+
     public static string FindAppManifestFile(string unturnedPath, string appId)
     {
-        string[] possiblePath =
+        var appManifest = Constants.AppManifestFileName(appId);
+        string[] possiblePaths =
         [
-            Path.Combine(unturnedPath, "steamapps", $"appmanifest_{appId}.acf"), // inside of Unturned folder
-            Path.GetFullPath(Path.Combine(unturnedPath, "..", "..", $"appmanifest_{appId}.acf")) // outside of unturned folder
+            Path.Combine(unturnedPath, Constants.SteamAppsDirName, appManifest), // steamcmd +force_install_dir <unturnedPath>
+            Path.GetFullPath(Path.Combine(unturnedPath, "..", "..", appManifest)) // standard Steam library layout
         ];
-        var appdataPath = possiblePath.FirstOrDefault(File.Exists);
-        if (appdataPath == null)
+        var found = possiblePaths.FirstOrDefault(File.Exists);
+        if (found == null)
         {
-            throw new FileNotFoundException($"Required file is not found. Searched: {unturnedPath}", $"appmanifest_{appId}.acf");
+            // List the real paths searched — a missing appmanifest usually means
+            // steamcmd didn't finish the download.
+            var searched = string.Join(Environment.NewLine + "  ", possiblePaths);
+            throw new FileNotFoundException(
+                $"{appManifest} not found (did steamcmd finish downloading?). Searched:{Environment.NewLine}  {searched}",
+                appManifest);
         }
-        return appdataPath;
+        return found;
     }
+
     public static async Task<(string Version, string BuildId)> ParseAsync(string unturnedPath, string appManifestPath)
     {
-        var statusFilePath = Path.Combine(unturnedPath, "Status.json");
+        var statusFilePath = Path.Combine(unturnedPath, Constants.StatusFileName);
         if (!File.Exists(statusFilePath))
         {
-            throw new FileNotFoundException("Status file is not found", statusFilePath);
+            throw new FileNotFoundException($"{Constants.StatusFileName} not found.", statusFilePath);
         }
-        var node = JsonNode.Parse(await File.ReadAllTextAsync(statusFilePath))!["Game"]!;
-        var version = $"3.{node["Major_Version"]}.{node["Minor_Version"]}.{node["Patch_Version"]}";
+
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(statusFilePath));
+        var game = root?[GameSection]
+                   ?? throw new InvalidOperationException($"{Constants.StatusFileName} is missing the '{GameSection}' section: {statusFilePath}");
+        var major = game[MajorVersionKey];
+        var minor = game[MinorVersionKey];
+        var patch = game[PatchVersionKey];
+        if (major is null || minor is null || patch is null)
+        {
+            throw new InvalidOperationException(
+                $"{Constants.StatusFileName} '{GameSection}' section is missing {MajorVersionKey}/{MinorVersionKey}/{PatchVersionKey}: {statusFilePath}");
+        }
+        var version = $"3.{major}.{minor}.{patch}";
+
         await using var file = File.OpenRead(appManifestPath);
         var kv = KVSerializer.Create(KVSerializationFormat.KeyValues1Text);
         var obj = kv.Deserialize(file);
-        var buildId = obj["buildid"].ToString();
+        var buildId = obj[BuildIdKey]?.ToString();
+        if (string.IsNullOrWhiteSpace(buildId))
+        {
+            throw new InvalidOperationException($"'{BuildIdKey}' not found in app manifest: {appManifestPath}");
+        }
         return (version, buildId);
     }
 }
