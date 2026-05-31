@@ -108,4 +108,29 @@ public class UpdateRunnerTests
 
         exit.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task ShouldReturnSuccessWhenGameBuildChangedButTrackedFilesUnchanged()
+    {
+        using var tempDir = new TempDir();
+        var (unturnedPath, redistPath, _) = Setup(tempDir);
+
+        // Redist already has the identical DLL (so nothing gets copied)...
+        File.Copy(
+            Path.Combine(unturnedPath, "Unturned_Data", Constants.ManagedDirName, "Assembly-CSharp.dll"),
+            Path.Combine(redistPath, "Assembly-CSharp.dll"));
+        // ...and a version.json whose BuildId differs from the manifest's (19099921),
+        // i.e. the game build advanced but our tracked files did not.
+        await new VersionTracker(redistPath, preview: false).SaveAsync(new VersionInfo
+        {
+            GameVersion = "3.0.0.0", BuildId = "00000001", NuGetVersion = "3.0.0.0",
+            FilesHash = "stale", LastUpdated = DateTime.UtcNow
+        });
+
+        var exit = await new UpdateRunner().RunAsync(
+            unturnedPath, redistPath, AppId, force: false, preview: false,
+            publicizeAssemblies: [], updateFiles: ["Assembly-CSharp.dll"]);
+
+        exit.ShouldBe(0); // no-op success, not a failure
+    }
 }

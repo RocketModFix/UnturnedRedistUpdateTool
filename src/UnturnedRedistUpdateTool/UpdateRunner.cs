@@ -78,14 +78,19 @@ public class UpdateRunner
         var (updatedFiles, manifests) = await redistUpdater.UpdateAsync();
         if (updatedFiles.Count == 0)
         {
-            Console.WriteLine("No files were updated - either no changes or something went wrong.");
-            if (versionInfo?.BuildId == newBuildId)
+            // No tracked redistributable file changed -> nothing to publish.
+            if (versionInfo?.BuildId != newBuildId)
+            {
+                // The game build advanced but it didn't touch any of the files we
+                // redistribute (it changed other depot content). This is a no-op,
+                // NOT an error.
+                Console.WriteLine($"Game build changed ({versionInfo?.BuildId} -> {newBuildId}) but no redistributed files changed; nothing to update.");
+            }
+            else
             {
                 Console.WriteLine("Build ID is the same, no update needed.");
-                return 0;
             }
-            Console.WriteLine("Build ID changed but no files updated - this might be an issue.");
-            return 1;
+            return 0;
         }
         Console.WriteLine($"{updatedFiles.Count} Unturned's file(s) were updated");
         var combinedHash = CreateCombinedHash(manifests);
