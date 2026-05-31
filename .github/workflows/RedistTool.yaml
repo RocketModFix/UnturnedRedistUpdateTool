@@ -19,6 +19,8 @@ on:
 jobs:
   Build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # required for the built-in GITHUB_TOKEN to create the release
 
     steps:
       - name: Checkout code
@@ -82,7 +84,9 @@ jobs:
           name: UnturnedRedistUpdateTool Release v${{ steps.version.outputs.version }}
           tag: ${{ steps.version.outputs.version }}
           artifacts: "./src/UnturnedRedistUpdateTool/bin/Release/net9.0/linux-x64/UnturnedRedistUpdateTool.zip"
-          token: ${{ secrets.PAT }}
+          # Built-in token (never expires). Safe here because nothing listens to
+          # the tool's release event — the redist repo pulls it on its own cron.
+          token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: ${{ steps.version.outputs.is_prerelease }}
           allowUpdates: true
           draft: false
