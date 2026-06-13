@@ -1,5 +1,5 @@
 using System.Text.Json;
-using BepInEx.AssemblyPublicizer;
+using UnturnedRedistUpdateTool.Publicization;
 
 namespace UnturnedRedistUpdateTool;
 
@@ -46,7 +46,14 @@ public class RedistUpdater
             var redistFilePath = Path.Combine(_redistPath, file.Name);
             if (_publicizeAssemblies.Any(x => x == file.Name))
             {
-                AssemblyPublicizer.Publicize(managedFilePath, redistFilePath);
+                // Skip virtual members so plugin `protected override`s keep compiling,
+                // and skip compiler-generated members to avoid public-name clashes.
+                // See RocketModFix.Unturned.Redist#56.
+                AssemblyPublicizer.Publicize(managedFilePath, redistFilePath, new PublicizeOptions
+                {
+                    IncludeVirtualMembers = false,
+                    IncludeCompilerGeneratedMembers = false,
+                });
                 Console.WriteLine($"Publicized {redistFilePath}");
                 var publicizedHash = HashHelper.GetFileHash(redistFilePath);
                 manifests[file.Name] = publicizedHash;
