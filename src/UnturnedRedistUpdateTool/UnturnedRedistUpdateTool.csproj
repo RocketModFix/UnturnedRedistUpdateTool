@@ -19,7 +19,7 @@
   <ItemGroup>
     <!-- dnlib powers our vendored publicizer (see Publicization/), adapted from krafs/Publicizer. -->
     <PackageReference Include="dnlib" Version="4.5.0" />
-    <PackageReference Include="ValveKeyValue" Version="0.70.0.499"/>
+    <PackageReference Include="ValveKeyValue" Version="0.71.0.528"/>
   </ItemGroup>
 
 </Project>
