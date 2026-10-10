@@ -134,4 +134,32 @@ public class RedistUpdaterTests
         var manifestContent = await File.ReadAllTextAsync(Path.Combine(target, "manifest.sha256.json"));
         manifestContent.ShouldContain(dll);
     }
+
+    [Fact]
+    public async Task ShouldNotReportPublicizedAssemblyWhenOutputIsUnchanged()
+    {
+        using var tempDir = new TempDir();
+        var source = Path.Combine(tempDir.Path, "source");
+        var target = Path.Combine(tempDir.Path, "target");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(target);
+
+        const string dll = "UnturnedRedistUpdateTool.dll";
+        File.Copy(Path.Combine(AppContext.BaseDirectory, dll), Path.Combine(source, dll));
+
+        // First run publicizes into the redist.
+        var (firstUpdated, _) = await new RedistUpdater(source, target, [dll], [dll]).UpdateAsync();
+        firstUpdated.ShouldContainKey(Path.Combine(source, dll));
+        var firstBytes = File.ReadAllBytes(Path.Combine(target, dll));
+
+        // A new game build that didn't touch this DLL: publicizing it again yields the same
+        // bytes, so it must not count as updated (no spurious .Publicized release).
+        var (updated, manifests) = await new RedistUpdater(source, target, [dll], [dll]).UpdateAsync();
+
+        updated.ShouldBeEmpty();
+        manifests.ShouldBeEmpty();
+        File.ReadAllBytes(Path.Combine(target, dll)).ShouldBe(firstBytes);
+        Directory.GetFiles(target).Select(Path.GetFileName)
+            .ShouldBe(new[] { dll, "manifest.sha256.json" }, ignoreOrder: true);
+    }
 }

@@ -22,6 +22,8 @@ public sealed class PublicizeOptions
     /// <c>[CompilerGenerated]</c> (backing fields, closures, iterator state
     /// machines, ...) are left untouched. They are implementation details plugins
     /// should not bind to, and making them public can introduce name conflicts.
+    /// Accessors of auto-properties and field-like events are still publicized via
+    /// their property/event, which is never marked compiler-generated.
     /// </summary>
     public bool IncludeCompilerGeneratedMembers { get; set; }
 

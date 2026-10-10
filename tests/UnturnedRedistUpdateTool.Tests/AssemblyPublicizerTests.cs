@@ -21,6 +21,15 @@ public abstract class PublicizeFixtureBase
     protected virtual int ProtectedVirtualMethod() => _privateField + PrivateMethod();
 
     public virtual void PublicVirtualMethod() { }
+
+#pragma warning disable CS0067 // never invoked: only the metadata shape matters here
+    // Field-like events: their add/remove accessors are [CompilerGenerated].
+    private event Action? PrivateEvent;
+
+    internal static event Action? InternalStaticEvent;
+
+    protected virtual event Action? ProtectedVirtualEvent;
+#pragma warning restore CS0067
 }
 
 public class AssemblyPublicizerTests
@@ -46,6 +55,29 @@ public class AssemblyPublicizerTests
 
             // Already-public virtual stays public.
             Method(fixture, "PublicVirtualMethod").IsPublic.ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void PublicizesFieldLikeEventAccessorsButNotTheirBackingFields()
+    {
+        PublicizeAndInspectFixture(includeVirtualMembers: false, fixture =>
+        {
+            // Non-public field-like events become usable (`+=`/`-=`) from plugins even
+            // though their accessors are compiler-generated.
+            Method(fixture, "add_PrivateEvent").IsPublic.ShouldBeTrue();
+            Method(fixture, "remove_PrivateEvent").IsPublic.ShouldBeTrue();
+            Method(fixture, "add_InternalStaticEvent").IsPublic.ShouldBeTrue();
+            Method(fixture, "remove_InternalStaticEvent").IsPublic.ShouldBeTrue();
+
+            // The compiler-generated backing fields stay private, so the event name is
+            // not ambiguous with a same-named public field (CS0229).
+            Field(fixture, "PrivateEvent").IsPrivate.ShouldBeTrue();
+            Field(fixture, "InternalStaticEvent").IsPrivate.ShouldBeTrue();
+
+            // Virtual event accessors keep their access, like other virtual members (#56).
+            Method(fixture, "add_ProtectedVirtualEvent").IsFamily.ShouldBeTrue();
+            Method(fixture, "remove_ProtectedVirtualEvent").IsFamily.ShouldBeTrue();
         });
     }
 

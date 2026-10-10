@@ -46,17 +46,33 @@ public class RedistUpdater
             var redistFilePath = Path.Combine(_redistPath, file.Name);
             if (_publicizeAssemblies.Any(x => x == file.Name))
             {
-                // Skip virtual members so plugin `protected override`s keep compiling,
-                // and skip compiler-generated members to avoid public-name clashes.
-                // See RocketModFix.Unturned.Redist#56.
-                AssemblyPublicizer.Publicize(managedFilePath, redistFilePath, new PublicizeOptions
+                // Publicize into a temp file and treat the assembly as updated only if the
+                // output differs from what the redist already has. Publicization is
+                // deterministic, so an unchanged game DLL yields an identical file; counting
+                // it as updated would publish a new .Publicized version on every game build
+                // even when no redistributed file changed (the plain variants don't).
+                var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}-{file.Name}");
+                try
                 {
-                    IncludeVirtualMembers = false,
-                    IncludeCompilerGeneratedMembers = false,
-                });
-                Console.WriteLine($"Publicized {redistFilePath}");
-                var publicizedHash = HashHelper.GetFileHash(redistFilePath);
-                manifests[file.Name] = publicizedHash;
+                    // Skip virtual members so plugin `protected override`s keep compiling,
+                    // and skip compiler-generated members to avoid public-name clashes.
+                    // See RocketModFix.Unturned.Redist#56.
+                    AssemblyPublicizer.Publicize(managedFilePath, tempPath, new PublicizeOptions
+                    {
+                        IncludeVirtualMembers = false,
+                        IncludeCompilerGeneratedMembers = false,
+                    });
+                    var publicizedHash = HashHelper.GetFileHash(tempPath);
+                    if (File.Exists(redistFilePath) && HashHelper.GetFileHash(redistFilePath) == publicizedHash)
+                        continue;
+                    File.Copy(tempPath, redistFilePath, true);
+                    Console.WriteLine($"Publicized {redistFilePath}");
+                    manifests[file.Name] = publicizedHash;
+                }
+                finally
+                {
+                    File.Delete(tempPath);
+                }
             }
             else
             {

@@ -6,7 +6,8 @@
 // It is reshaped from an MSBuild Task (operating on a consumer's references)
 // into a standalone "load DLL -> rewrite visibility -> write DLL" API so the
 // redist tool can ship a pre-publicized assembly. The decision logic
-// (virtual / compiler-generated / do-not-publicize handling) is preserved.
+// (virtual / compiler-generated / do-not-publicize handling) is preserved, with one
+// addition: event accessors are publicized like property accessors (see EVENTS).
 // -----------------------------------------------------------------------------
 
 using System.Linq;
@@ -59,11 +60,11 @@ public static class AssemblyPublicizer
     private static bool PublicizeAssembly(ModuleDef module, PublicizeOptions options)
     {
         bool publicizedAnyMemberInAssembly = false;
-        var doNotPublicizePropertyMethods = new HashSet<MethodDef>();
+        var doNotPublicizeAccessorMethods = new HashSet<MethodDef>();
 
         foreach (TypeDef typeDef in module.GetTypes())
         {
-            doNotPublicizePropertyMethods.Clear();
+            doNotPublicizeAccessorMethods.Clear();
 
             bool publicizedAnyMemberInType = false;
             string typeName = typeDef.ReflectionFullName;
@@ -79,11 +80,11 @@ public static class AssemblyPublicizer
                 {
                     if (propertyDef.GetMethod is MethodDef getter)
                     {
-                        doNotPublicizePropertyMethods.Add(getter);
+                        doNotPublicizeAccessorMethods.Add(getter);
                     }
                     if (propertyDef.SetMethod is MethodDef setter)
                     {
-                        doNotPublicizePropertyMethods.Add(setter);
+                        doNotPublicizeAccessorMethods.Add(setter);
                     }
                     continue;
                 }
@@ -104,12 +105,49 @@ public static class AssemblyPublicizer
                 }
             }
 
+            // EVENTS
+            // Field-like events get [CompilerGenerated] add/remove accessors, so the METHODS
+            // loop below would skip them and a non-public event stayed unusable (CS1061/CS0122).
+            // Publicize the accessors here, like property accessors. The compiler-generated
+            // backing field keeps its visibility, so the event doesn't clash with it (CS0229).
+            foreach (EventDef eventDef in typeDef.Events)
+            {
+                string eventName = $"{typeName}.{eventDef.Name}";
+
+                if (options.DoNotPublicizeMembers.Contains(eventName))
+                {
+                    foreach (MethodDef accessor in GetEventAccessors(eventDef))
+                    {
+                        doNotPublicizeAccessorMethods.Add(accessor);
+                    }
+                    continue;
+                }
+
+                if (explicitlyDoNotPublicizeType)
+                {
+                    continue;
+                }
+
+                if (!options.IncludeCompilerGeneratedMembers && IsCompilerGenerated(eventDef))
+                {
+                    continue;
+                }
+
+                foreach (MethodDef accessor in GetEventAccessors(eventDef))
+                {
+                    if (AssemblyEditor.PublicizeMethod(accessor, options.IncludeVirtualMembers))
+                    {
+                        publicizedAnyMemberInType = true;
+                    }
+                }
+            }
+
             // METHODS
             foreach (MethodDef methodDef in typeDef.Methods)
             {
                 string methodName = $"{typeName}.{methodDef.Name}";
 
-                if (doNotPublicizePropertyMethods.Contains(methodDef))
+                if (doNotPublicizeAccessorMethods.Contains(methodDef))
                 {
                     continue;
                 }
@@ -187,6 +225,26 @@ public static class AssemblyPublicizer
         }
 
         return publicizedAnyMemberInAssembly;
+    }
+
+    private static IEnumerable<MethodDef> GetEventAccessors(EventDef eventDef)
+    {
+        if (eventDef.AddMethod is MethodDef add)
+        {
+            yield return add;
+        }
+        if (eventDef.RemoveMethod is MethodDef remove)
+        {
+            yield return remove;
+        }
+        if (eventDef.InvokeMethod is MethodDef invoke)
+        {
+            yield return invoke;
+        }
+        foreach (MethodDef other in eventDef.OtherMethods)
+        {
+            yield return other;
+        }
     }
 
     private static bool IsCompilerGenerated(IHasCustomAttribute memberDef)
